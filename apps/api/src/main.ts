@@ -51,8 +51,6 @@ async function bootstrap(): Promise<void> {
     }, SHUTDOWN_TIMEOUT_MS);
     timer.unref();
 
-    // app.close() stops accepting connections, waits for in-flight requests,
-    // then runs onApplicationShutdown (closes Postgres and Redis).
     app
       .close()
       .then(() => {

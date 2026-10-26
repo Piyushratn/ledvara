@@ -1,4 +1,5 @@
 import { Injectable, type OnApplicationShutdown } from "@nestjs/common";
+import { createDb, schema, type Db } from "@ledvara/db";
 import { Redis } from "ioredis";
 import pg from "pg";
 import { loadEnv } from "../config/env.js";
@@ -7,6 +8,7 @@ import { loadEnv } from "../config/env.js";
 export class Dependencies implements OnApplicationShutdown {
   private readonly pool: pg.Pool;
   private readonly redis: Redis;
+  public readonly db: Db;
 
   constructor() {
     const env = loadEnv();
@@ -25,6 +27,12 @@ export class Dependencies implements OnApplicationShutdown {
     this.redis.on("error", () => {
       // Errors are reported through ping(); this keeps Node from crashing on unhandled events.
     });
+    this.db = createDb(this.pool);
+  }
+
+  async countUsers(): Promise<number> {
+    const rows = await this.db.select().from(schema.users);
+    return rows.length;
   }
 
   async pingPostgres(): Promise<boolean> {
