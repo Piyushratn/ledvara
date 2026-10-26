@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, Res } from "@nestjs/common";
+import { Controller, Get, HttpCode, Inject, Res } from "@nestjs/common";
 import type { FastifyReply } from "fastify";
 import { Dependencies } from "./dependencies.js";
 import { ShutdownState } from "./shutdown-state.js";
@@ -6,8 +6,8 @@ import { ShutdownState } from "./shutdown-state.js";
 @Controller()
 export class HealthController {
   constructor(
-    private readonly dependencies: Dependencies,
-    private readonly shutdownState: ShutdownState,
+    @Inject(Dependencies) private readonly dependencies: Dependencies,
+    @Inject(ShutdownState) private readonly shutdownState: ShutdownState,
   ) {}
 
   @Get("healthz")
