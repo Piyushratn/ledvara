@@ -1,0 +1,19 @@
+{
+  "name": "@ledvara/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "node scripts/migrate.mjs up",
+    "migrate:down": "node scripts/migrate.mjs down",
+    "migrate:create": "node scripts/create-migration.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.9",
+    "node-pg-migrate": "^9.0.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5"
+  }
+}
