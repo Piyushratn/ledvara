@@ -6,6 +6,7 @@ import { AppModule } from "./app.module.js";
 import { loadEnv } from "./config/env.js";
 import { buildLoggerOptions, generateRequestId } from "./logging/logger-options.js";
 import { AllExceptionsFilter } from "./errors/all-exceptions.filter.js";
+import { registerSecurity } from "./security/register-security.js";
 
 async function bootstrap(): Promise<void> {
   const env = loadEnv();
@@ -21,6 +22,7 @@ async function bootstrap(): Promise<void> {
     bufferLogs: true,
   });
   app.enableShutdownHooks();
+  await registerSecurity(app, env);
   app.useGlobalFilters(new AllExceptionsFilter());
   app
     .getHttpAdapter()
