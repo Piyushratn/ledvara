@@ -19,7 +19,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, {
     bufferLogs: true,
   });
-
+  app.enableShutdownHooks();
   app
     .getHttpAdapter()
     .getInstance()
