@@ -2,6 +2,7 @@
   "name": "ledvara",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@12.15.0",
   "description": "Sandbox payments platform with a double-entry ledger, idempotent APIs, webhooks, reconciliation, and an explainable risk engine. Simulated money only.",
   "engines": {
     "node": ">=22"
@@ -11,6 +12,8 @@
     "dev": "echo \"dev scripts arrive in later steps\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "turbo run build",
+    "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -24,6 +27,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
+    "turbo": "^2.11.10",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.0"
   }
