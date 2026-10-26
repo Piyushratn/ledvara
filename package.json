@@ -9,7 +9,8 @@
   },
   "scripts": {
     "prepare": "husky",
-    "dev": "echo \"dev scripts arrive in later steps\"",
+    "infra:up": "docker compose up -d --wait",
+    "dev": "pnpm infra:up && turbo run dev",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "turbo run build",
