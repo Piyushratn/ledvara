@@ -5,6 +5,7 @@ import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fa
 import { AppModule } from "./app.module.js";
 import { loadEnv } from "./config/env.js";
 import { buildLoggerOptions, generateRequestId } from "./logging/logger-options.js";
+import { AllExceptionsFilter } from "./errors/all-exceptions.filter.js";
 
 async function bootstrap(): Promise<void> {
   const env = loadEnv();
@@ -20,6 +21,7 @@ async function bootstrap(): Promise<void> {
     bufferLogs: true,
   });
   app.enableShutdownHooks();
+  app.useGlobalFilters(new AllExceptionsFilter());
   app
     .getHttpAdapter()
     .getInstance()
