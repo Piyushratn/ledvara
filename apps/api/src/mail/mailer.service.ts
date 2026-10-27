@@ -1,16 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import nodemailer from "nodemailer";
+import { createTransport, type Transporter } from "nodemailer";
 import { loadEnv } from "../config/env.js";
 
 @Injectable()
 export class MailerService {
-  private readonly transport: nodemailer.Transporter;
+  private readonly transport: Transporter;
   private readonly from: string;
 
   constructor() {
     const env = loadEnv();
     this.from = env.SMTP_FROM;
-    this.transport = nodemailer.createTransport({
+    this.transport = createTransport({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: false,
