@@ -1,7 +1,8 @@
-import { Body, Controller, HttpCode, Inject, Post } from "@nestjs/common";
+import { Body, Controller, HttpCode, Inject, Post, Req } from "@nestjs/common";
+import type { FastifyRequest } from "fastify";
 import { parseOrThrow } from "../validation/parse.js";
-import { signUpSchema, verifyEmailSchema } from "./auth.schemas.js";
-import { AuthService } from "./auth.service.js";
+import { loginSchema, signUpSchema, verifyEmailSchema } from "./auth.schemas.js";
+import { AuthService, type LoginResult } from "./auth.service.js";
 
 @Controller("v1/auth")
 export class AuthController {
@@ -21,5 +22,16 @@ export class AuthController {
     const input = parseOrThrow(verifyEmailSchema, body);
     await this.auth.verifyEmail(input.token);
     return { message: "Email verified." };
+  }
+
+  @Post("login")
+  @HttpCode(200)
+  async login(@Body() body: unknown, @Req() request: FastifyRequest): Promise<LoginResult> {
+    const input = parseOrThrow(loginSchema, body);
+    const userAgent = request.headers["user-agent"];
+    return this.auth.login(input, {
+      userAgent: typeof userAgent === "string" ? userAgent : null,
+      ip: request.ip ?? null,
+    });
   }
 }

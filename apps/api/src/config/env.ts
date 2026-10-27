@@ -19,6 +19,9 @@ const envSchema = z.object({
   SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
   SMTP_FROM: z.string().default("Ledvara <no-reply@ledvara.local>"),
   APP_BASE_URL: z.string().url().default("http://localhost:5173"),
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
+  ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
 });
 
 export type Env = z.infer<typeof envSchema>;
