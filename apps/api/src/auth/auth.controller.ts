@@ -1,8 +1,16 @@
 import { Body, Controller, HttpCode, Inject, Post, Req } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
 import { parseOrThrow } from "../validation/parse.js";
-import { loginSchema, signUpSchema, verifyEmailSchema } from "./auth.schemas.js";
-import { AuthService, type LoginResult } from "./auth.service.js";
+import { loginSchema, refreshSchema, signUpSchema, verifyEmailSchema } from "./auth.schemas.js";
+import { AuthService, type LoginResult, type RequestMeta, type TokenPair } from "./auth.service.js";
+
+function metaFrom(request: FastifyRequest): RequestMeta {
+  const userAgent = request.headers["user-agent"];
+  return {
+    userAgent: typeof userAgent === "string" ? userAgent : null,
+    ip: request.ip ?? null,
+  };
+}
 
 @Controller("v1/auth")
 export class AuthController {
@@ -28,10 +36,13 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body() body: unknown, @Req() request: FastifyRequest): Promise<LoginResult> {
     const input = parseOrThrow(loginSchema, body);
-    const userAgent = request.headers["user-agent"];
-    return this.auth.login(input, {
-      userAgent: typeof userAgent === "string" ? userAgent : null,
-      ip: request.ip ?? null,
-    });
+    return this.auth.login(input, metaFrom(request));
+  }
+
+  @Post("refresh")
+  @HttpCode(200)
+  async refresh(@Body() body: unknown, @Req() request: FastifyRequest): Promise<TokenPair> {
+    const input = parseOrThrow(refreshSchema, body);
+    return this.auth.refresh(input.refreshToken, metaFrom(request));
   }
 }

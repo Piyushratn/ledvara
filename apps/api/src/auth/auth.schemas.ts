@@ -15,6 +15,11 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(128),
 });
 
+export const refreshSchema = z.object({
+  refreshToken: z.string().min(20).max(200),
+});
+
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type RefreshInput = z.infer<typeof refreshSchema>;

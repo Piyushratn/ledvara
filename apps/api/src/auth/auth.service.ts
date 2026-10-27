@@ -19,11 +19,14 @@ export interface RequestMeta {
   ip: string | null;
 }
 
-export interface LoginResult {
+export interface TokenPair {
   accessToken: string;
   refreshToken: string;
   tokenType: "Bearer";
   expiresIn: number;
+}
+
+export interface LoginResult extends TokenPair {
   user: { id: string; email: string; fullName: string | null };
 }
 
@@ -129,11 +132,82 @@ export class AuthService {
       throw new AppError(403, "email_not_verified", "Please verify your email before logging in.");
     }
 
-    // A login starts a new session family. Rotation (next step) keeps the same family id.
-    const familyId = randomUUID();
+    // A login starts a new session family. Rotation keeps the same family id.
+    const pair = await this.issueTokens(user.id, randomUUID(), meta);
+    return { ...pair, user: { id: user.id, email: user.email, fullName: user.fullName } };
+  }
+
+  async refresh(refreshToken: string, meta: RequestMeta): Promise<TokenPair> {
+    const tokenHash = hashToken(refreshToken);
+    const now = new Date();
+
+    // Atomic: only one caller can flip used_at from NULL, so a token works exactly once.
+    const [claimed] = await this.deps.db
+      .update(schema.refreshTokens)
+      .set({ usedAt: now })
+      .where(
+        and(
+          eq(schema.refreshTokens.tokenHash, tokenHash),
+          isNull(schema.refreshTokens.usedAt),
+          isNull(schema.refreshTokens.revokedAt),
+          gt(schema.refreshTokens.expiresAt, now),
+        ),
+      )
+      .returning({
+        userId: schema.refreshTokens.userId,
+        familyId: schema.refreshTokens.familyId,
+      });
+
+    if (!claimed) {
+      await this.handleRejectedRefresh(tokenHash, now);
+      throw new AppError(
+        401,
+        "invalid_refresh_token",
+        "Your session is no longer valid. Please log in again.",
+      );
+    }
+
+    return this.issueTokens(claimed.userId, claimed.familyId, meta);
+  }
+
+  private async handleRejectedRefresh(tokenHash: string, now: Date): Promise<void> {
+    const [existing] = await this.deps.db
+      .select({
+        familyId: schema.refreshTokens.familyId,
+        userId: schema.refreshTokens.userId,
+        usedAt: schema.refreshTokens.usedAt,
+        revokedAt: schema.refreshTokens.revokedAt,
+      })
+      .from(schema.refreshTokens)
+      .where(eq(schema.refreshTokens.tokenHash, tokenHash))
+      .limit(1);
+
+    // A token that was already used (and not merely revoked) is being replayed: treat as theft.
+    if (existing?.usedAt && !existing.revokedAt) {
+      await this.deps.db
+        .update(schema.refreshTokens)
+        .set({ revokedAt: now })
+        .where(
+          and(
+            eq(schema.refreshTokens.familyId, existing.familyId),
+            isNull(schema.refreshTokens.revokedAt),
+          ),
+        );
+      this.logger.warn(
+        { userId: existing.userId, familyId: existing.familyId },
+        "Refresh token reuse detected; session family revoked",
+      );
+    }
+  }
+
+  private async issueTokens(
+    userId: string,
+    familyId: string,
+    meta: RequestMeta,
+  ): Promise<TokenPair> {
     const refreshToken = generateToken();
     await this.deps.db.insert(schema.refreshTokens).values({
-      userId: user.id,
+      userId,
       familyId,
       tokenHash: hashToken(refreshToken),
       expiresAt: new Date(Date.now() + this.env.REFRESH_TOKEN_TTL_DAYS * DAY_MS),
@@ -143,7 +217,7 @@ export class AuthService {
 
     const accessToken = await signAccessToken(
       this.env.JWT_SECRET,
-      { userId: user.id, sessionId: familyId },
+      { userId, sessionId: familyId },
       this.env.ACCESS_TOKEN_TTL_SECONDS,
     );
 
@@ -152,7 +226,6 @@ export class AuthService {
       refreshToken,
       tokenType: "Bearer",
       expiresIn: this.env.ACCESS_TOKEN_TTL_SECONDS,
-      user: { id: user.id, email: user.email, fullName: user.fullName },
     };
   }
 }
