@@ -15,6 +15,10 @@ const envSchema = z.object({
         .map((origin) => origin.trim())
         .filter((origin) => origin.length > 0),
     ),
+  SMTP_HOST: z.string().default("localhost"),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
+  SMTP_FROM: z.string().default("Ledvara <no-reply@ledvara.local>"),
+  APP_BASE_URL: z.string().url().default("http://localhost:5173"),
 });
 
 export type Env = z.infer<typeof envSchema>;

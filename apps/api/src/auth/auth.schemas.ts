@@ -6,4 +6,9 @@ export const signUpSchema = z.object({
   fullName: z.string().trim().min(1).max(100).optional(),
 });
 
+export const verifyEmailSchema = z.object({
+  token: z.string().min(20).max(200),
+});
+
 export type SignUpInput = z.infer<typeof signUpSchema>;
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
