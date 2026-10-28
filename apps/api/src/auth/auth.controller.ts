@@ -1,8 +1,11 @@
-import { Body, Controller, HttpCode, Inject, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Inject, Post, Req, UseGuards } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
+import { AppError } from "../errors/app-error.js";
 import { parseOrThrow } from "../validation/parse.js";
+import { AccessTokenGuard, type AuthenticatedRequest } from "./access-token.guard.js";
 import { loginSchema, refreshSchema, signUpSchema, verifyEmailSchema } from "./auth.schemas.js";
 import { AuthService, type LoginResult, type RequestMeta, type TokenPair } from "./auth.service.js";
+import { SessionsService } from "./sessions.service.js";
 
 function metaFrom(request: FastifyRequest): RequestMeta {
   const userAgent = request.headers["user-agent"];
@@ -14,7 +17,10 @@ function metaFrom(request: FastifyRequest): RequestMeta {
 
 @Controller("v1/auth")
 export class AuthController {
-  constructor(@Inject(AuthService) private readonly auth: AuthService) {}
+  constructor(
+    @Inject(AuthService) private readonly auth: AuthService,
+    @Inject(SessionsService) private readonly sessions: SessionsService,
+  ) {}
 
   @Post("signup")
   @HttpCode(202)
@@ -44,5 +50,36 @@ export class AuthController {
   async refresh(@Body() body: unknown, @Req() request: FastifyRequest): Promise<TokenPair> {
     const input = parseOrThrow(refreshSchema, body);
     return this.auth.refresh(input.refreshToken, metaFrom(request));
+  }
+
+  @Post("logout")
+  @UseGuards(AccessTokenGuard)
+  @HttpCode(200)
+  async logout(@Req() request: AuthenticatedRequest): Promise<{ message: string }> {
+    await this.sessions.revokeFamily(request.auth.sessionId);
+    return { message: "Logged out." };
+  }
+
+  @Post("logout-all")
+  @UseGuards(AccessTokenGuard)
+  @HttpCode(200)
+  async logoutAll(@Req() request: AuthenticatedRequest): Promise<{ message: string }> {
+    await this.sessions.revokeAllForUser(request.auth.userId);
+    return { message: "Logged out of all devices." };
+  }
+
+  @Get("me")
+  @UseGuards(AccessTokenGuard)
+  async me(@Req() request: AuthenticatedRequest): Promise<{
+    id: string;
+    email: string;
+    fullName: string | null;
+    emailVerified: boolean;
+  }> {
+    const user = await this.sessions.getUser(request.auth.userId);
+    if (!user) {
+      throw new AppError(401, "unauthorized", "Account no longer exists.");
+    }
+    return user;
   }
 }
