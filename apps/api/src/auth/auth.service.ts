@@ -10,8 +10,6 @@ import type { LoginInput, SignUpInput } from "./auth.schemas.js";
 import { signAccessToken } from "./jwt.js";
 import { PasswordService } from "./password.service.js";
 import { generateToken, hashToken } from "./tokens.js";
-import { eq } from "drizzle-orm";
-import { AppError } from "../errors/app-error.js";
 
 const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
