@@ -3,8 +3,16 @@ import type { FastifyRequest } from "fastify";
 import { AppError } from "../errors/app-error.js";
 import { parseOrThrow } from "../validation/parse.js";
 import { AccessTokenGuard, type AuthenticatedRequest } from "./access-token.guard.js";
-import { loginSchema, refreshSchema, signUpSchema, verifyEmailSchema } from "./auth.schemas.js";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  refreshSchema,
+  resetPasswordSchema,
+  signUpSchema,
+  verifyEmailSchema,
+} from "./auth.schemas.js";
 import { AuthService, type LoginResult, type RequestMeta, type TokenPair } from "./auth.service.js";
+import { PasswordResetService } from "./password-reset.service.js";
 import { SessionsService } from "./sessions.service.js";
 
 function metaFrom(request: FastifyRequest): RequestMeta {
@@ -20,6 +28,7 @@ export class AuthController {
   constructor(
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(SessionsService) private readonly sessions: SessionsService,
+    @Inject(PasswordResetService) private readonly passwordReset: PasswordResetService,
   ) {}
 
   @Post("signup")
@@ -50,6 +59,22 @@ export class AuthController {
   async refresh(@Body() body: unknown, @Req() request: FastifyRequest): Promise<TokenPair> {
     const input = parseOrThrow(refreshSchema, body);
     return this.auth.refresh(input.refreshToken, metaFrom(request));
+  }
+
+  @Post("forgot-password")
+  @HttpCode(202)
+  async forgotPassword(@Body() body: unknown): Promise<{ message: string }> {
+    const input = parseOrThrow(forgotPasswordSchema, body);
+    await this.passwordReset.requestReset(input.email);
+    return { message: "If an account exists for this email, a reset link is on its way." };
+  }
+
+  @Post("reset-password")
+  @HttpCode(200)
+  async resetPassword(@Body() body: unknown): Promise<{ message: string }> {
+    const input = parseOrThrow(resetPasswordSchema, body);
+    await this.passwordReset.resetPassword(input.token, input.newPassword);
+    return { message: "Password updated. Please log in with your new password." };
   }
 
   @Post("logout")
