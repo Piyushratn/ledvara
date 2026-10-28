@@ -7,6 +7,7 @@ import { LoginThrottleService } from "./auth/login-throttle.service.js";
 import { PasswordResetService } from "./auth/password-reset.service.js";
 import { PasswordService } from "./auth/password.service.js";
 import { SessionsService } from "./auth/sessions.service.js";
+import { TwoFactorService } from "./auth/two-factor.service.js";
 import { Dependencies } from "./health/dependencies.js";
 import { HealthController } from "./health/health.controller.js";
 import { ShutdownState } from "./health/shutdown-state.js";
@@ -24,6 +25,7 @@ import { MailerService } from "./mail/mailer.service.js";
     SessionsService,
     AccessTokenGuard,
     LoginThrottleService,
+    TwoFactorService,
   ],
 })
 export class AppModule {}

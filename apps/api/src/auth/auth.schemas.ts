@@ -28,6 +28,23 @@ export const resetPasswordSchema = z.object({
   newPassword: z.string().min(10, "Password must be at least 10 characters").max(128),
 });
 
+export const twoFactorEnableSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/u, "Enter the 6-digit code"),
+});
+
+export const twoFactorLoginSchema = z.object({
+  challengeToken: z.string().min(20).max(1000),
+  code: z.string().trim().min(6).max(32),
+});
+
+export const twoFactorDisableSchema = z.object({
+  password: z.string().min(1).max(128),
+  code: z.string().trim().min(6).max(32),
+});
+
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

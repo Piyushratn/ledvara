@@ -10,6 +10,7 @@ import type { LoginInput, SignUpInput } from "./auth.schemas.js";
 import { signAccessToken } from "./jwt.js";
 import { PasswordService } from "./password.service.js";
 import { generateToken, hashToken } from "./tokens.js";
+import { TwoFactorService, type TwoFactorChallengeData } from "./two-factor.service.js";
 
 const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -30,6 +31,12 @@ export interface LoginResult extends TokenPair {
   user: { id: string; email: string; fullName: string | null };
 }
 
+export interface TwoFactorRequiredResult {
+  twoFactorRequired: true;
+  challengeToken: string;
+  expiresIn: number;
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -41,6 +48,7 @@ export class AuthService {
     @Inject(Dependencies) private readonly deps: Dependencies,
     @Inject(PasswordService) private readonly passwords: PasswordService,
     @Inject(MailerService) private readonly mailer: MailerService,
+    @Inject(TwoFactorService) private readonly twoFactor: TwoFactorService,
   ) {
     this.dummyHash = this.passwords.hash("dummy-password-used-only-for-timing");
   }
@@ -113,7 +121,10 @@ export class AuthService {
     });
   }
 
-  async login(input: LoginInput, meta: RequestMeta): Promise<LoginResult> {
+  async login(
+    input: LoginInput,
+    meta: RequestMeta,
+  ): Promise<LoginResult | TwoFactorRequiredResult> {
     const [user] = await this.deps.db
       .select()
       .from(schema.users)
@@ -132,7 +143,32 @@ export class AuthService {
       throw new AppError(403, "email_not_verified", "Please verify your email before logging in.");
     }
 
+    // Second factor required: no tokens yet, only a short-lived challenge.
+    if (user.twoFactorEnabledAt) {
+      return { twoFactorRequired: true, ...this.twoFactor.createChallenge(user.id, user.email) };
+    }
+
     // A login starts a new session family. Rotation keeps the same family id.
+    const pair = await this.issueTokens(user.id, randomUUID(), meta);
+    return { ...pair, user: { id: user.id, email: user.email, fullName: user.fullName } };
+  }
+
+  async completeTwoFactorLogin(
+    challenge: TwoFactorChallengeData,
+    code: string,
+    meta: RequestMeta,
+  ): Promise<LoginResult> {
+    const [user] = await this.deps.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, challenge.userId))
+      .limit(1);
+
+    const codeOk = user ? await this.twoFactor.verifySecondFactor(user.id, code) : false;
+    if (!user || !codeOk) {
+      throw new AppError(401, "invalid_two_factor_code", "That code is not correct.");
+    }
+
     const pair = await this.issueTokens(user.id, randomUUID(), meta);
     return { ...pair, user: { id: user.id, email: user.email, fullName: user.fullName } };
   }
