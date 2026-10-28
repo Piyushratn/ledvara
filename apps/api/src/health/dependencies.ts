@@ -7,7 +7,7 @@ import { loadEnv } from "../config/env.js";
 @Injectable()
 export class Dependencies implements OnApplicationShutdown {
   private readonly pool: pg.Pool;
-  private readonly redis: Redis;
+  public readonly redis: Redis;
   public readonly db: Db;
 
   constructor() {

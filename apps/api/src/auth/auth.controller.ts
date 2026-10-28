@@ -12,6 +12,7 @@ import {
   verifyEmailSchema,
 } from "./auth.schemas.js";
 import { AuthService, type LoginResult, type RequestMeta, type TokenPair } from "./auth.service.js";
+import { LoginThrottleService } from "./login-throttle.service.js";
 import { PasswordResetService } from "./password-reset.service.js";
 import { SessionsService } from "./sessions.service.js";
 
@@ -29,6 +30,7 @@ export class AuthController {
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(SessionsService) private readonly sessions: SessionsService,
     @Inject(PasswordResetService) private readonly passwordReset: PasswordResetService,
+    @Inject(LoginThrottleService) private readonly throttle: LoginThrottleService,
   ) {}
 
   @Post("signup")
@@ -51,7 +53,17 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body() body: unknown, @Req() request: FastifyRequest): Promise<LoginResult> {
     const input = parseOrThrow(loginSchema, body);
-    return this.auth.login(input, metaFrom(request));
+    await this.throttle.assertAllowed(request.ip ?? null, input.email);
+    try {
+      const result = await this.auth.login(input, metaFrom(request));
+      await this.throttle.recordSuccess(input.email);
+      return result;
+    } catch (error) {
+      if (error instanceof AppError) {
+        await this.throttle.recordFailure(input.email);
+      }
+      throw error;
+    }
   }
 
   @Post("refresh")
