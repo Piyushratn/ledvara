@@ -6,6 +6,7 @@ import { AuthService } from "./auth/auth.service.js";
 import { LoginThrottleService } from "./auth/login-throttle.service.js";
 import { PasswordResetService } from "./auth/password-reset.service.js";
 import { PasswordService } from "./auth/password.service.js";
+import { SessionsController } from "./auth/sessions.controller.js";
 import { SessionsService } from "./auth/sessions.service.js";
 import { TwoFactorService } from "./auth/two-factor.service.js";
 import { Dependencies } from "./health/dependencies.js";
@@ -14,7 +15,7 @@ import { ShutdownState } from "./health/shutdown-state.js";
 import { MailerService } from "./mail/mailer.service.js";
 
 @Module({
-  controllers: [AppController, HealthController, AuthController],
+  controllers: [AppController, HealthController, AuthController, SessionsController],
   providers: [
     Dependencies,
     ShutdownState,
