@@ -8,6 +8,7 @@ import { ErrorCodes } from "../errors/error-codes.js";
 import { Dependencies } from "../health/dependencies.js";
 import { MailerService } from "../mail/mailer.service.js";
 import type { CreateInviteInput } from "./invites.schemas.js";
+import { can } from "./permissions.js";
 import type { Role } from "./roles.js";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -22,26 +23,14 @@ export class InvitesService {
     @Inject(MailerService) private readonly mailer: MailerService,
   ) {}
 
+  /** The caller's role was already verified by OrgPermissionGuard (members:invite). */
   async create(
     orgId: string,
     actorId: string,
+    actorRole: Role,
     input: CreateInviteInput,
   ): Promise<{ id: string; email: string; role: string; expiresAt: Date }> {
-    const [membership] = await this.deps.db
-      .select({ role: schema.memberships.role })
-      .from(schema.memberships)
-      .where(and(eq(schema.memberships.orgId, orgId), eq(schema.memberships.userId, actorId)))
-      .limit(1);
-
-    // 404 (not 403) so non-members cannot discover which organizations exist.
-    if (!membership) {
-      throw new AppError(404, ErrorCodes.NotFound, "Organization not found.");
-    }
-    const actorRole = membership.role as Role;
-    if (actorRole !== "owner" && actorRole !== "admin") {
-      throw new AppError(403, ErrorCodes.Forbidden, "You are not allowed to invite members.");
-    }
-    if (input.role === "admin" && actorRole !== "owner") {
+    if (input.role === "admin" && !can(actorRole, "members:invite_admin")) {
       throw new AppError(403, ErrorCodes.Forbidden, "Only an owner can invite an admin.");
     }
 
@@ -104,8 +93,6 @@ export class InvitesService {
         throw new AppError(403, ErrorCodes.Forbidden, "Verify your email before accepting.");
       }
 
-      // Atomic claim: only one request can flip accepted_at from NULL. The email match is
-      // part of the WHERE, so a wrong user does not burn someone else's invite.
       const [invite] = await tx
         .update(schema.invites)
         .set({ acceptedAt: now })

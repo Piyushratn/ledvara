@@ -17,6 +17,7 @@ import { InvitesController } from "./orgs/invites.controller.js";
 import { InvitesService } from "./orgs/invites.service.js";
 import { OrgsController } from "./orgs/orgs.controller.js";
 import { OrgsService } from "./orgs/orgs.service.js";
+import { OrgPermissionGuard } from "./orgs/org-permission.guard.js";
 
 @Module({
   controllers: [
@@ -40,6 +41,7 @@ import { OrgsService } from "./orgs/orgs.service.js";
     TwoFactorService,
     OrgsService,
     InvitesService,
+    OrgPermissionGuard,
   ],
 })
 export class AppModule {}
