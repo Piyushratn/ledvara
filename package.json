@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "turbo run build",
     "test": "turbo run test",
+    "test:integration": "pnpm --filter @ledvara/api test:integration",
     "format": "prettier --write .",
     "db:migrate": "pnpm --filter @ledvara/db migrate",
     "format:check": "prettier --check ."
