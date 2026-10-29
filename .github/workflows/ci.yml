@@ -13,7 +13,7 @@ jobs:
   verify:
     name: Lint, typecheck, test, build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -39,8 +39,11 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
-      - name: Test
+      - name: Unit tests
         run: pnpm test
 
       - name: Build
         run: pnpm build
+
+      - name: Integration tests (real Postgres and Redis)
+        run: pnpm --filter @ledvara/api test:integration
