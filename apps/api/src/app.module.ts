@@ -13,6 +13,8 @@ import { Dependencies } from "./health/dependencies.js";
 import { HealthController } from "./health/health.controller.js";
 import { ShutdownState } from "./health/shutdown-state.js";
 import { MailerService } from "./mail/mailer.service.js";
+import { InvitesController } from "./orgs/invites.controller.js";
+import { InvitesService } from "./orgs/invites.service.js";
 import { OrgsController } from "./orgs/orgs.controller.js";
 import { OrgsService } from "./orgs/orgs.service.js";
 
@@ -23,6 +25,7 @@ import { OrgsService } from "./orgs/orgs.service.js";
     AuthController,
     SessionsController,
     OrgsController,
+    InvitesController,
   ],
   providers: [
     Dependencies,
@@ -36,6 +39,7 @@ import { OrgsService } from "./orgs/orgs.service.js";
     LoginThrottleService,
     TwoFactorService,
     OrgsService,
+    InvitesService,
   ],
 })
 export class AppModule {}
