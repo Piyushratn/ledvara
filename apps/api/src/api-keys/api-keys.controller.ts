@@ -49,4 +49,14 @@ export class ApiKeysController {
   ): Promise<void> {
     await this.keys.revoke(request.membership.orgId, keyId);
   }
+
+  @Post(":keyId/rotate")
+  @RequirePermission("api_keys:manage")
+  @HttpCode(201)
+  async rotate(
+    @Param("keyId", new ParseUUIDPipe()) keyId: string,
+    @Req() request: OrgRequest,
+  ): Promise<ApiKeyView & { key: string }> {
+    return this.keys.rotate(request.membership.orgId, keyId, request.auth.userId);
+  }
 }

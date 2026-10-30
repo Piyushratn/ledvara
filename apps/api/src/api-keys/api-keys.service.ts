@@ -82,6 +82,47 @@ export class ApiKeysService {
     }
   }
 
+  /** Replaces a key: same name and scopes, new secret. The old key stops working immediately. */
+  async rotate(
+    orgId: string,
+    keyId: string,
+    actorId: string,
+  ): Promise<ApiKeyView & { key: string }> {
+    return this.deps.db.transaction(async (tx) => {
+      const [old] = await tx
+        .update(schema.apiKeys)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(schema.apiKeys.id, keyId),
+            eq(schema.apiKeys.orgId, orgId),
+            isNull(schema.apiKeys.revokedAt),
+          ),
+        )
+        .returning();
+      if (!old) {
+        throw new AppError(404, ErrorCodes.NotFound, "API key not found.");
+      }
+
+      const generated = generateApiKey();
+      const [row] = await tx
+        .insert(schema.apiKeys)
+        .values({
+          orgId,
+          name: old.name,
+          keyPrefix: generated.prefix,
+          keyHash: generated.hash,
+          scopes: old.scopes,
+          createdBy: actorId,
+        })
+        .returning();
+      if (!row) {
+        throw new AppError(500, ErrorCodes.InternalError, "Could not rotate the API key.");
+      }
+      return { ...this.toView(row), key: generated.key };
+    });
+  }
+
   private toView(row: typeof schema.apiKeys.$inferSelect): ApiKeyView {
     return {
       id: row.id,

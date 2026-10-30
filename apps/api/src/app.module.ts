@@ -22,6 +22,8 @@ import { MembersController } from "./orgs/members.controller.js";
 import { MembersService } from "./orgs/members.service.js";
 import { ApiKeysController } from "./api-keys/api-keys.controller.js";
 import { ApiKeysService } from "./api-keys/api-keys.service.js";
+import { ApiKeyGuard } from "./api-keys/api-key.guard.js";
+import { WhoAmIController } from "./api-keys/whoami.controller.js";
 
 @Module({
   controllers: [
@@ -33,6 +35,7 @@ import { ApiKeysService } from "./api-keys/api-keys.service.js";
     InvitesController,
     MembersController,
     ApiKeysController,
+    WhoAmIController,
   ],
   providers: [
     Dependencies,
@@ -50,6 +53,7 @@ import { ApiKeysService } from "./api-keys/api-keys.service.js";
     OrgPermissionGuard,
     MembersService,
     ApiKeysService,
+    ApiKeyGuard,
   ],
 })
 export class AppModule {}
