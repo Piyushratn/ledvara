@@ -11,6 +11,7 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
+import { AuditService } from "../audit/audit.service.js";
 import { AccessTokenGuard } from "../auth/access-token.guard.js";
 import { parseOrThrow } from "../validation/parse.js";
 import { updateMemberRoleSchema } from "./members.schemas.js";
@@ -21,7 +22,10 @@ import { RequirePermission } from "./require-permission.js";
 @Controller("v1/orgs/:orgId/members")
 @UseGuards(AccessTokenGuard, OrgPermissionGuard)
 export class MembersController {
-  constructor(@Inject(MembersService) private readonly members: MembersService) {}
+  constructor(
+    @Inject(MembersService) private readonly members: MembersService,
+    @Inject(AuditService) private readonly audit: AuditService,
+  ) {}
 
   @Get()
   @RequirePermission("members:read")
@@ -37,7 +41,18 @@ export class MembersController {
     @Req() request: OrgRequest,
   ): Promise<MemberView> {
     const input = parseOrThrow(updateMemberRoleSchema, body);
-    return this.members.updateRole(request.membership.orgId, userId, input.role);
+    const member = await this.members.updateRole(request.membership.orgId, userId, input.role);
+    await this.audit.record({
+      orgId: request.membership.orgId,
+      actorType: "user",
+      actorId: request.auth.userId,
+      action: "member.role_changed",
+      targetType: "user",
+      targetId: userId,
+      metadata: { newRole: input.role },
+      ip: request.ip ?? null,
+    });
+    return member;
   }
 
   @Delete(":userId")
@@ -53,5 +68,14 @@ export class MembersController {
       request.membership.role,
       userId,
     );
+    await this.audit.record({
+      orgId: request.membership.orgId,
+      actorType: "user",
+      actorId: request.auth.userId,
+      action: userId === request.auth.userId ? "member.left" : "member.removed",
+      targetType: "user",
+      targetId: userId,
+      ip: request.ip ?? null,
+    });
   }
 }
