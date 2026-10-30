@@ -16,7 +16,7 @@ export class Api {
   ) {}
 
   async call(
-    method: "GET" | "POST" | "DELETE",
+    method: "GET" | "POST" | "PATCH" | "DELETE",
     url: string,
     options: { body?: unknown; token?: string; userAgent?: string } = {},
   ): Promise<Resp> {

@@ -48,11 +48,12 @@ export class PasswordResetService {
     }
   }
 
-  async resetPassword(token: string, newPassword: string): Promise<void> {
+  /** Returns the id of the user whose password was changed. */
+  async resetPassword(token: string, newPassword: string): Promise<string> {
     const passwordHash = await this.passwords.hash(newPassword);
     const now = new Date();
 
-    await this.deps.db.transaction(async (tx) => {
+    return this.deps.db.transaction(async (tx) => {
       // One atomic UPDATE makes the token single-use, even with concurrent requests.
       const [row] = await tx
         .update(schema.passwordResetTokens)
@@ -102,6 +103,8 @@ export class PasswordResetService {
         .where(
           and(eq(schema.refreshTokens.userId, row.userId), isNull(schema.refreshTokens.revokedAt)),
         );
+
+      return row.userId;
     });
   }
 }

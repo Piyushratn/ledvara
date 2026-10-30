@@ -66,7 +66,7 @@ export async function startTestApp(): Promise<TestApp> {
     app,
     pool,
     async reset() {
-      await pool.query("TRUNCATE users CASCADE");
+      await pool.query("TRUNCATE users, audit_events CASCADE");
       const { Redis } = await import("ioredis");
       const client = new Redis(redisUrl);
       await client.flushall();

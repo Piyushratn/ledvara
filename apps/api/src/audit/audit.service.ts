@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { schema } from "@ledvara/db";
-import { and, desc, eq, lt, or } from "drizzle-orm";
+import { and, desc, isNull, eq, lt, or } from "drizzle-orm";
 import { Dependencies } from "../health/dependencies.js";
 
 export interface AuditInput {
@@ -47,6 +47,41 @@ export class AuditService {
     } catch (error) {
       this.logger.error({ err: error, action: event.action }, "Failed to write audit event");
     }
+  }
+
+  async userIdForEmail(email: string): Promise<string | null> {
+    const [user] = await this.deps.db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.email, email))
+      .limit(1);
+    return user?.id ?? null;
+  }
+
+  /** The caller's own security history: events with no organization where they are the actor. */
+  async listForUser(userId: string, limit: number): Promise<AuditEventView[]> {
+    const rows = await this.deps.db
+      .select()
+      .from(schema.auditEvents)
+      .where(
+        and(
+          eq(schema.auditEvents.actorId, userId),
+          eq(schema.auditEvents.actorType, "user"),
+          isNull(schema.auditEvents.orgId),
+        ),
+      )
+      .orderBy(desc(schema.auditEvents.createdAt), desc(schema.auditEvents.id))
+      .limit(limit);
+    return rows.map((row) => ({
+      id: row.id,
+      actorType: row.actorType,
+      actorId: row.actorId,
+      action: row.action,
+      targetType: row.targetType,
+      targetId: row.targetId,
+      metadata: row.metadata,
+      createdAt: row.createdAt,
+    }));
   }
 
   /** Newest first. The cursor is "<iso timestamp>|<id>" encoded as base64url. */
