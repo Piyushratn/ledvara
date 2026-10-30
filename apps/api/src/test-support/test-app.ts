@@ -66,11 +66,22 @@ export async function startTestApp(): Promise<TestApp> {
     app,
     pool,
     async reset() {
-      await pool.query("TRUNCATE users, audit_events CASCADE");
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query("SET LOCAL ledvara.allow_truncate = 'on'");
+        await client.query("TRUNCATE users, audit_events CASCADE");
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
       const { Redis } = await import("ioredis");
-      const client = new Redis(redisUrl);
-      await client.flushall();
-      client.disconnect();
+      const redisClient = new Redis(redisUrl);
+      await redisClient.flushall();
+      redisClient.disconnect();
     },
     async stop() {
       await app.close();
