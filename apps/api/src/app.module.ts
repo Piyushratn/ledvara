@@ -18,6 +18,8 @@ import { InvitesService } from "./orgs/invites.service.js";
 import { OrgsController } from "./orgs/orgs.controller.js";
 import { OrgsService } from "./orgs/orgs.service.js";
 import { OrgPermissionGuard } from "./orgs/org-permission.guard.js";
+import { MembersController } from "./orgs/members.controller.js";
+import { MembersService } from "./orgs/members.service.js";
 
 @Module({
   controllers: [
@@ -27,6 +29,7 @@ import { OrgPermissionGuard } from "./orgs/org-permission.guard.js";
     SessionsController,
     OrgsController,
     InvitesController,
+    MembersController,
   ],
   providers: [
     Dependencies,
@@ -42,6 +45,7 @@ import { OrgPermissionGuard } from "./orgs/org-permission.guard.js";
     OrgsService,
     InvitesService,
     OrgPermissionGuard,
+    MembersService,
   ],
 })
 export class AppModule {}
