@@ -24,11 +24,14 @@ import { ApiKeysController } from "./api-keys/api-keys.controller.js";
 import { ApiKeysService } from "./api-keys/api-keys.service.js";
 import { ApiKeyGuard } from "./api-keys/api-key.guard.js";
 import { WhoAmIController } from "./api-keys/whoami.controller.js";
+import { AuditController } from "./audit/audit.controller.js";
+import { AuditService } from "./audit/audit.service.js";
 
 @Module({
   controllers: [
     AppController,
     HealthController,
+    AuditController,
     AuthController,
     SessionsController,
     OrgsController,
@@ -54,6 +57,7 @@ import { WhoAmIController } from "./api-keys/whoami.controller.js";
     MembersService,
     ApiKeysService,
     ApiKeyGuard,
+    AuditService,
   ],
 })
 export class AppModule {}

@@ -1,4 +1,4 @@
-import { customType, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { customType, jsonb, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { users } from "./schema.js";
 
 const citext = customType<{ data: string }>({
@@ -60,5 +60,18 @@ export const apiKeys = pgTable("api_keys", {
   createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const auditEvents = pgTable("audit_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id"),
+  actorType: text("actor_type").notNull(),
+  actorId: uuid("actor_id"),
+  action: text("action").notNull(),
+  targetType: text("target_type"),
+  targetId: text("target_id"),
+  metadata: jsonb("metadata").notNull().default({}),
+  ipAddress: text("ip_address"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
