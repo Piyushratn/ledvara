@@ -55,10 +55,13 @@ export async function startTestApp(): Promise<TestApp> {
   const { AppModule } = await import("../app.module.js");
   const { AllExceptionsFilter } = await import("../errors/all-exceptions.filter.js");
 
+  // rawBody: true keeps the exact request bytes on request.rawBody for signature checks.
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
     logger: false,
+    rawBody: true,
   });
   app.useGlobalFilters(new AllExceptionsFilter());
+
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
 
@@ -70,7 +73,7 @@ export async function startTestApp(): Promise<TestApp> {
       try {
         await client.query("BEGIN");
         await client.query("SET LOCAL ledvara.allow_truncate = 'on'");
-        await client.query("TRUNCATE users, audit_events CASCADE");
+        await client.query("TRUNCATE users, audit_events, provider_events CASCADE");
         await client.query("COMMIT");
       } catch (error) {
         await client.query("ROLLBACK");

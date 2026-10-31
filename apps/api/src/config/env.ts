@@ -22,6 +22,9 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
+  PROVIDER_URL: z.string().url().default("http://localhost:4000"),
+  PROVIDER_API_KEY: z.string().default("sim-dev-key"),
+  PROVIDER_CALLBACK_SECRET: z.string().min(8).default("sim-dev-callback-secret"),
 });
 
 export type Env = z.infer<typeof envSchema>;

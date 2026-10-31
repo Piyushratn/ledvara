@@ -38,6 +38,9 @@ import { ReversalsService } from "./ledger/reversals.service.js";
 import { RefundsService } from "./ledger/refunds.service.js";
 import { PayoutsController } from "./ledger/payouts.controller.js";
 import { PayoutsService } from "./ledger/payouts.service.js";
+import { ProviderCallbacksController } from "./provider/provider-callbacks.controller.js";
+import { ProviderClient } from "./provider/provider-client.js";
+import { ProviderEventsService } from "./provider/provider-events.service.js";
 
 @Module({
   controllers: [
@@ -54,6 +57,7 @@ import { PayoutsService } from "./ledger/payouts.service.js";
     TransfersController,
     AccountsController,
     PayoutsController,
+    ProviderCallbacksController,
   ],
   providers: [
     Dependencies,
@@ -82,6 +86,8 @@ import { PayoutsService } from "./ledger/payouts.service.js";
     ReversalsService,
     RefundsService,
     PayoutsService,
+    ProviderClient,
+    ProviderEventsService,
   ],
 })
 export class AppModule {}

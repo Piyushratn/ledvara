@@ -21,8 +21,10 @@ async function bootstrap(): Promise<void> {
     requestIdLogLabel: "requestId",
   });
 
+  // rawBody: true keeps the exact request bytes on request.rawBody for signature checks.
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, {
     bufferLogs: true,
+    rawBody: true,
   });
 
   await registerSecurity(app, env);

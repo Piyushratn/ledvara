@@ -98,3 +98,14 @@ export const payouts = pgTable("payouts", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const providerEvents = pgTable("provider_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: text("event_id").notNull().unique(),
+  payoutRef: text("payout_ref").notNull(),
+  type: text("type").notNull(),
+  sequence: integer("sequence").notNull(),
+  payload: jsonb("payload").notNull(),
+  outcome: text("outcome").notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+});

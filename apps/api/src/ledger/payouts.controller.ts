@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Inject,
+  Logger,
   Param,
   ParseUUIDPipe,
   Post,
@@ -14,6 +15,7 @@ import type { FastifyReply } from "fastify";
 import { ApiKeyGuard, type ApiKeyRequest } from "../api-keys/api-key.guard.js";
 import { RequireScope } from "../api-keys/scope.decorator.js";
 import { AppError } from "../errors/app-error.js";
+import { ProviderClient } from "../provider/provider-client.js";
 import { parseOrThrow } from "../validation/parse.js";
 import { createPayoutSchema } from "./payouts.schemas.js";
 import { PayoutsService, type PayoutView } from "./payouts.service.js";
@@ -21,7 +23,12 @@ import { PayoutsService, type PayoutView } from "./payouts.service.js";
 @Controller("v1/payouts")
 @UseGuards(ApiKeyGuard)
 export class PayoutsController {
-  constructor(@Inject(PayoutsService) private readonly payouts: PayoutsService) {}
+  private readonly logger = new Logger(PayoutsController.name);
+
+  constructor(
+    @Inject(PayoutsService) private readonly payouts: PayoutsService,
+    @Inject(ProviderClient) private readonly provider: ProviderClient,
+  ) {}
 
   @Post()
   @RequireScope("ledger:write")
@@ -43,6 +50,21 @@ export class PayoutsController {
     const result = await this.payouts.create(request.apiKey.orgId, key, input);
     void reply.status(result.status);
     void reply.header("Idempotent-Replayed", result.replayed ? "true" : "false");
+
+    // After the commit: tell the provider. The payout id is the idempotent reference, so a
+    // repeat is harmless. A failure leaves the payout pending for retry/reconciliation.
+    if (!result.replayed) {
+      const view = result.body as PayoutView;
+      try {
+        await this.provider.createPayout({
+          reference: view.id,
+          amountMinor: view.amountMinor,
+          destinationLabel: view.destinationLabel,
+        });
+      } catch (error) {
+        this.logger.error({ err: error, payoutId: view.id }, "Could not reach the provider");
+      }
+    }
     return result.body;
   }
 
