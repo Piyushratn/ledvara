@@ -19,6 +19,7 @@
     "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "@types/uuid": "^11.0.0",
+    "fast-check": "^4.10.2",
     "pino-pretty": "^13.2.0",
     "testcontainers": "^12.2.1",
     "tsx": "^4.23.15",

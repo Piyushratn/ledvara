@@ -122,5 +122,15 @@ export class LedgerService {
     if (debits !== credits) {
       throw new AppError(422, ErrorCodes.ValidationFailed, "Debits must equal credits.");
     }
+    const debited = new Set(
+      input.entries.filter((e) => e.direction === "debit").map((e) => e.accountId),
+    );
+    if (input.entries.some((e) => e.direction === "credit" && debited.has(e.accountId))) {
+      throw new AppError(
+        422,
+        ErrorCodes.ValidationFailed,
+        "An account cannot be both debited and credited in one transaction.",
+      );
+    }
   }
 }
