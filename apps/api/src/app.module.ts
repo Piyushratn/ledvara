@@ -31,6 +31,9 @@ import { TransitionService } from "./ledger/transition.service.js";
 import { IdempotencyService } from "./ledger/idempotency.service.js";
 import { TransfersController } from "./ledger/transfers.controller.js";
 import { TransfersService } from "./ledger/transfers.service.js";
+import { AccountsController } from "./ledger/accounts.controller.js";
+import { AccountsService } from "./ledger/accounts.service.js";
+import { TransfersListService } from "./ledger/transfers-list.service.js";
 
 @Module({
   controllers: [
@@ -45,6 +48,7 @@ import { TransfersService } from "./ledger/transfers.service.js";
     ApiKeysController,
     WhoAmIController,
     TransfersController,
+    AccountsController,
   ],
   providers: [
     Dependencies,
@@ -68,6 +72,8 @@ import { TransfersService } from "./ledger/transfers.service.js";
     TransitionService,
     IdempotencyService,
     TransfersService,
+    AccountsService,
+    TransfersListService,
   ],
 })
 export class AppModule {}

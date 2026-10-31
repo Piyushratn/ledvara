@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -14,15 +15,18 @@ import type { FastifyReply } from "fastify";
 import { ApiKeyGuard, type ApiKeyRequest } from "../api-keys/api-key.guard.js";
 import { RequireScope } from "../api-keys/scope.decorator.js";
 import { AppError } from "../errors/app-error.js";
-import { ErrorCodes } from "../errors/error-codes.js";
 import { parseOrThrow } from "../validation/parse.js";
 import { createTransferSchema } from "./transfers.schemas.js";
+import { listTransfersSchema, TransfersListService } from "./transfers-list.service.js";
 import { TransfersService, type TransferView } from "./transfers.service.js";
 
 @Controller("v1/transfers")
 @UseGuards(ApiKeyGuard)
 export class TransfersController {
-  constructor(@Inject(TransfersService) private readonly transfers: TransfersService) {}
+  constructor(
+    @Inject(TransfersService) private readonly transfers: TransfersService,
+    @Inject(TransfersListService) private readonly listing: TransfersListService,
+  ) {}
 
   @Post()
   @RequireScope("ledger:write")
@@ -47,6 +51,12 @@ export class TransfersController {
     return result.body;
   }
 
+  @Get()
+  @RequireScope("ledger:read")
+  async list(@Query() query: unknown, @Req() request: ApiKeyRequest) {
+    return this.listing.list(request.apiKey.orgId, parseOrThrow(listTransfersSchema, query));
+  }
+
   @Get(":id")
   @RequireScope("ledger:read")
   async get(
@@ -56,5 +66,3 @@ export class TransfersController {
     return this.transfers.get(request.apiKey.orgId, id);
   }
 }
-
-export { ErrorCodes };
