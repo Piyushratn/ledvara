@@ -27,6 +27,7 @@ import { WhoAmIController } from "./api-keys/whoami.controller.js";
 import { AuditController } from "./audit/audit.controller.js";
 import { AuditService } from "./audit/audit.service.js";
 import { LedgerService } from "./ledger/ledger.service.js";
+import { TransitionService } from "./ledger/transition.service.js";
 
 @Module({
   controllers: [
@@ -60,6 +61,7 @@ import { LedgerService } from "./ledger/ledger.service.js";
     ApiKeyGuard,
     AuditService,
     LedgerService,
+    TransitionService,
   ],
 })
 export class AppModule {}
