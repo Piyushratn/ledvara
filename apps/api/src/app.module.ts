@@ -29,6 +29,8 @@ import { AuditService } from "./audit/audit.service.js";
 import { LedgerService } from "./ledger/ledger.service.js";
 import { TransitionService } from "./ledger/transition.service.js";
 import { IdempotencyService } from "./ledger/idempotency.service.js";
+import { TransfersController } from "./ledger/transfers.controller.js";
+import { TransfersService } from "./ledger/transfers.service.js";
 
 @Module({
   controllers: [
@@ -42,6 +44,7 @@ import { IdempotencyService } from "./ledger/idempotency.service.js";
     MembersController,
     ApiKeysController,
     WhoAmIController,
+    TransfersController,
   ],
   providers: [
     Dependencies,
@@ -64,6 +67,7 @@ import { IdempotencyService } from "./ledger/idempotency.service.js";
     LedgerService,
     TransitionService,
     IdempotencyService,
+    TransfersService,
   ],
 })
 export class AppModule {}
