@@ -8,8 +8,8 @@ let api: Api;
 let ledger: import("./ledger.service.js").LedgerService;
 
 const WALLETS = 5;
-const RUNS = 150;
-const COMMANDS = 25;
+const RUNS = 100;
+const COMMANDS = 60;
 
 beforeAll(async () => {
   ctx = await startTestApp();
@@ -113,7 +113,7 @@ describe("ledger invariants hold for random transfers", () => {
 
     await fc.assert(
       fc.asyncProperty(
-        fc.array(cmdArb, { minLength: 1, maxLength: COMMANDS }),
+        fc.array(cmdArb, { minLength: 20, maxLength: COMMANDS }),
         async (cmds: Cmd[]) => {
           const { orgId, wallets } = await setup();
           const model = wallets.map(() => 10_000n);
