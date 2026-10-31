@@ -8,5 +8,7 @@ export default defineConfig({
     testTimeout: 60_000,
     hookTimeout: 180_000,
     fileParallelism: false,
+    maxWorkers: 1,
+    minWorkers: 1,
   },
 });
