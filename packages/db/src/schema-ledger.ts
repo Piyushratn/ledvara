@@ -2,9 +2,12 @@ import {
   bigint,
   bigserial,
   boolean,
+  integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
@@ -60,3 +63,19 @@ export const ledgerEntries = pgTable("ledger_entries", {
   amountMinor: bigint("amount_minor", { mode: "bigint" }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const idempotencyKeys = pgTable(
+  "idempotency_keys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    responseStatus: integer("response_status").notNull(),
+    responseBody: jsonb("response_body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.orgId, table.key)],
+);

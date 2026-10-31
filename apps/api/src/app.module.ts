@@ -28,6 +28,7 @@ import { AuditController } from "./audit/audit.controller.js";
 import { AuditService } from "./audit/audit.service.js";
 import { LedgerService } from "./ledger/ledger.service.js";
 import { TransitionService } from "./ledger/transition.service.js";
+import { IdempotencyService } from "./ledger/idempotency.service.js";
 
 @Module({
   controllers: [
@@ -62,6 +63,7 @@ import { TransitionService } from "./ledger/transition.service.js";
     AuditService,
     LedgerService,
     TransitionService,
+    IdempotencyService,
   ],
 })
 export class AppModule {}
