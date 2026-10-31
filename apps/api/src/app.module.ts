@@ -35,6 +35,7 @@ import { AccountsController } from "./ledger/accounts.controller.js";
 import { AccountsService } from "./ledger/accounts.service.js";
 import { TransfersListService } from "./ledger/transfers-list.service.js";
 import { ReversalsService } from "./ledger/reversals.service.js";
+import { RefundsService } from "./ledger/refunds.service.js";
 
 @Module({
   controllers: [
@@ -76,6 +77,7 @@ import { ReversalsService } from "./ledger/reversals.service.js";
     AccountsService,
     TransfersListService,
     ReversalsService,
+    RefundsService,
   ],
 })
 export class AppModule {}

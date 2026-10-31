@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { schema } from "@ledvara/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { AppError } from "../errors/app-error.js";
 import { ErrorCodes } from "../errors/error-codes.js";
 import { Dependencies } from "../health/dependencies.js";
@@ -48,6 +48,14 @@ export class ReversalsService {
           "invalid_transition",
           `Cannot reverse a ${original.status} transfer.`,
         );
+      }
+
+      const refundCount = await tx.execute(sql`
+        SELECT count(*)::int AS n FROM transactions
+         WHERE reverses_id = ${original.id} AND kind = 'refund'
+      `);
+      if (((refundCount.rows[0] as { n?: number } | undefined)?.n ?? 0) > 0) {
+        throw new AppError(409, "has_refunds", "A transfer with refunds cannot be reversed.");
       }
 
       const entries = await tx
