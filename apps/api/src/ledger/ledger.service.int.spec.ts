@@ -1,4 +1,4 @@
-﻿import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { Api } from "../test-support/helpers.js";
 import { startTestApp, type TestApp } from "../test-support/test-app.js";
 
@@ -117,6 +117,20 @@ describe("LedgerService.post", () => {
         entries: [{ accountId: wallet1, direction: "debit", amountMinor: 1n }],
       }),
     ).rejects.toMatchObject({ code: "validation_failed" });
+  });
+
+  it("rejects debiting and crediting the same account", async () => {
+    await expect(
+      ledger.post({
+        orgId,
+        kind: "transfer",
+        entries: [
+          { accountId: wallet1, direction: "debit", amountMinor: 5000n },
+          { accountId: wallet1, direction: "credit", amountMinor: 5000n },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "validation_failed" });
+    expect(await balance(wallet1)).toBe(1000n);
   });
 
   it("cannot use another organization's account", async () => {

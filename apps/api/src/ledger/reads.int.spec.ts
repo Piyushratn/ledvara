@@ -31,6 +31,14 @@ async function send(method: "GET" | "POST", url: string, body?: unknown, idem?: 
   return { status: res.statusCode, body: JSON.parse(res.body) as Record<string, unknown> };
 }
 
+/** The database's own clock, so the test never depends on host/container clock drift. */
+async function dbNow(): Promise<string> {
+  const rows = await api.query<{ t: string }>(
+    `SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS t`,
+  );
+  return rows[0]?.t ?? "";
+}
+
 beforeEach(async () => {
   await ctx.reset();
   await api.signUpVerified("alice@example.com");
@@ -96,8 +104,8 @@ describe("balances and time travel", () => {
   });
 
   it("returns the balance as of a past moment", async () => {
-    const before = new Date().toISOString();
-    await new Promise((r) => setTimeout(r, 50));
+    const before = await dbNow();
+    await new Promise((r) => setTimeout(r, 100));
     await send(
       "POST",
       "/v1/transfers",

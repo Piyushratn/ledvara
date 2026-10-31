@@ -79,3 +79,22 @@ export const idempotencyKeys = pgTable(
   },
   (table) => [unique().on(table.orgId, table.key)],
 );
+
+export const payouts = pgTable("payouts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  transactionId: uuid("transaction_id")
+    .notNull()
+    .unique()
+    .references(() => transactions.id, { onDelete: "restrict" }),
+  sourceAccountId: uuid("source_account_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "restrict" }),
+  amountMinor: bigint("amount_minor", { mode: "bigint" }).notNull(),
+  destinationLabel: text("destination_label").notNull(),
+  providerRef: text("provider_ref").unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
