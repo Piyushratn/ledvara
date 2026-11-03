@@ -47,3 +47,6 @@ jobs:
 
       - name: Integration tests (real Postgres and Redis)
         run: pnpm --filter @ledvara/api test:integration
+
+      - name: Worker integration tests
+        run: pnpm --filter @ledvara/worker test:integration
