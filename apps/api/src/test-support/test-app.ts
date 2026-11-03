@@ -42,6 +42,7 @@ export async function startTestApp(): Promise<TestApp> {
   process.env.REDIS_URL = redisUrl;
   process.env.JWT_SECRET = "integration-test-secret-integration-test-secret";
   process.env.TWO_FACTOR_ENCRYPTION_KEY = "ab".repeat(32);
+  process.env.WEBHOOK_SECRET_KEY = "cd".repeat(32);
   process.env.APP_BASE_URL = "http://localhost:5173";
 
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 5 });

@@ -42,6 +42,8 @@ import { OutboxService } from "./outbox/outbox.service.js";
 import { ProviderCallbacksController } from "./provider/provider-callbacks.controller.js";
 import { ProviderClient } from "./provider/provider-client.js";
 import { ProviderEventsService } from "./provider/provider-events.service.js";
+import { WebhooksController } from "./webhooks/webhooks.controller.js";
+import { WebhooksService } from "./webhooks/webhooks.service.js";
 
 @Module({
   controllers: [
@@ -59,6 +61,7 @@ import { ProviderEventsService } from "./provider/provider-events.service.js";
     TransfersController,
     PayoutsController,
     ProviderCallbacksController,
+    WebhooksController,
   ],
   providers: [
     Dependencies,
@@ -90,6 +93,7 @@ import { ProviderEventsService } from "./provider/provider-events.service.js";
     OutboxService,
     ProviderClient,
     ProviderEventsService,
+    WebhooksService,
   ],
 })
 export class AppModule {}
