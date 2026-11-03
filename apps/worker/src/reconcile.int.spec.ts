@@ -5,7 +5,12 @@ import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { reconcileAndRecord, reconcileOnce } from "./reconcile.js";
+import {
+  emitFailureEvents,
+  reconcileAndRecord,
+  reconcileOnce,
+  type BalanceDrift,
+} from "./reconcile.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const migrationsDir = join(here, "../../../packages/db/migrations");
@@ -148,5 +153,61 @@ describe("reconcileAndRecord", () => {
       "SELECT count(*)::int AS n FROM reconciliation_runs",
     );
     expect((after.rows[0]?.n ?? 0) - (before.rows[0]?.n ?? 0)).toBe(1);
+  });
+});
+
+describe("emitFailureEvents", () => {
+  async function existingEventIds(): Promise<string[]> {
+    const rows = await pool.query<{ id: string }>(
+      "SELECT id FROM outbox_events WHERE type = 'ledger.reconciliation_failed'",
+    );
+    return rows.rows.map((row) => row.id);
+  }
+
+  it("writes one event per affected organization containing only its own findings", async () => {
+    const other = await pool.query<{ id: string }>(
+      "INSERT INTO organizations (name, slug) VALUES ('Other', $1) RETURNING id",
+      [`other-${randomUUID()}`],
+    );
+    const otherOrg = other.rows[0]?.id ?? "";
+    const drift = (org: string, id: string): BalanceDrift => ({
+      accountId: id,
+      orgId: org,
+      stored: "5",
+      derived: "4",
+    });
+
+    // Earlier tests may already have raised events (reconcileAndRecord found an unbalanced
+    // transaction), so look only at the events this call creates.
+    const known = await existingEventIds();
+
+    const count = await emitFailureEvents(pool, {
+      accountsChecked: 3,
+      drifts: [drift(orgId, randomUUID()), drift(otherOrg, randomUUID())],
+      unbalanced: [],
+    });
+    expect(count).toBe(2);
+
+    const rows = await pool.query<{
+      id: string;
+      org_id: string;
+      payload: { drifts: { orgId: string }[] };
+    }>("SELECT id, org_id, payload FROM outbox_events WHERE type = 'ledger.reconciliation_failed'");
+    const created = rows.rows.filter((row) => !known.includes(row.id));
+    expect(created).toHaveLength(2);
+    expect(created.map((row) => row.org_id).sort()).toEqual([orgId, otherOrg].sort());
+    for (const row of created) {
+      expect(row.payload.drifts).toHaveLength(1);
+      expect(row.payload.drifts[0]?.orgId).toBe(row.org_id);
+    }
+  });
+
+  it("writes nothing for a clean report", async () => {
+    const before = await pool.query<{ n: number }>("SELECT count(*)::int AS n FROM outbox_events");
+    expect(await emitFailureEvents(pool, { accountsChecked: 2, drifts: [], unbalanced: [] })).toBe(
+      0,
+    );
+    const after = await pool.query<{ n: number }>("SELECT count(*)::int AS n FROM outbox_events");
+    expect(after.rows[0]?.n).toBe(before.rows[0]?.n);
   });
 });

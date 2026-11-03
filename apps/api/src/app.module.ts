@@ -46,6 +46,8 @@ import { WebhooksController } from "./webhooks/webhooks.controller.js";
 import { WebhooksService } from "./webhooks/webhooks.service.js";
 import { WebhookDispatchService } from "./webhooks/webhook-dispatch.service.js";
 import { WebhookQueueService } from "./webhooks/webhook-queue.service.js";
+import { ReconciliationController } from "./reconciliation/reconciliation.controller.js";
+import { ReconciliationService } from "./reconciliation/reconciliation.service.js";
 
 @Module({
   controllers: [
@@ -64,6 +66,7 @@ import { WebhookQueueService } from "./webhooks/webhook-queue.service.js";
     PayoutsController,
     ProviderCallbacksController,
     WebhooksController,
+    ReconciliationController,
   ],
   providers: [
     Dependencies,
@@ -98,6 +101,7 @@ import { WebhookQueueService } from "./webhooks/webhook-queue.service.js";
     WebhooksService,
     WebhookDispatchService,
     WebhookQueueService,
+    ReconciliationService,
   ],
 })
 export class AppModule {}

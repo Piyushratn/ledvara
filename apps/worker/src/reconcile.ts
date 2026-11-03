@@ -93,7 +93,7 @@ export async function reconcileOnce(pool: Pool): Promise<ReconcileReport> {
   }
 }
 
-/** Runs a check and stores one history row. Returns the report. */
+/** Runs a check, stores one history row, and raises alert events when something is wrong. */
 export async function reconcileAndRecord(pool: Pool): Promise<ReconcileReport> {
   const started = new Date();
   const report = await reconcileOnce(pool);
@@ -109,7 +109,34 @@ export async function reconcileAndRecord(pool: Pool): Promise<ReconcileReport> {
       JSON.stringify({ drifts: report.drifts, unbalanced: report.unbalanced }),
     ],
   );
+  if (report.drifts.length > 0 || report.unbalanced.length > 0) {
+    await emitFailureEvents(pool, report);
+  }
   return report;
+}
+
+/** Writes one outbox event per affected organization, with only that organization's findings. */
+export async function emitFailureEvents(pool: Pool, report: ReconcileReport): Promise<number> {
+  const byOrg = new Map<string, { drifts: BalanceDrift[]; unbalanced: UnbalancedTransaction[] }>();
+  for (const drift of report.drifts) {
+    const entry = byOrg.get(drift.orgId) ?? { drifts: [], unbalanced: [] };
+    entry.drifts.push(drift);
+    byOrg.set(drift.orgId, entry);
+  }
+  for (const txn of report.unbalanced) {
+    const entry = byOrg.get(txn.orgId) ?? { drifts: [], unbalanced: [] };
+    entry.unbalanced.push(txn);
+    byOrg.set(txn.orgId, entry);
+  }
+
+  for (const [orgId, findings] of byOrg) {
+    await pool.query(
+      `INSERT INTO outbox_events (org_id, type, aggregate_type, aggregate_id, payload)
+       VALUES ($1, 'ledger.reconciliation_failed', 'reconciliation', gen_random_uuid(), $2::jsonb)`,
+      [orgId, JSON.stringify(findings)],
+    );
+  }
+  return byOrg.size;
 }
 
 export class ReconcileLoop {

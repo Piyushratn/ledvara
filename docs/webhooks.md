@@ -94,3 +94,14 @@ Ledvara disables the endpoint and stops sending it new events. `GET .../webhook-
 `enabled: false`, `disabledAt` and `disabledReason`. A single successful delivery resets the count.
 Fix your receiver, then re-enable with
 `PATCH .../webhook-endpoints/:id` and `{ "enabled": true }`, and use the `/test` route to confirm.
+
+## Event: `ledger.reconciliation_failed`
+
+Sent when the platform's hourly ledger check finds a stored balance that differs from the sum of its
+ledger entries, or a transaction whose debits and credits differ. The `data` field contains only your
+organization's findings:
+
+    { "drifts": [{ "accountId": "...", "stored": "5", "derived": "4" }], "unbalanced": [] }
+
+Amounts are strings in minor units (paise). Treat this event as an incident: do not retry money
+movements until it is resolved. `GET /v1/orgs/:orgId/reconciliation` shows recent runs.
