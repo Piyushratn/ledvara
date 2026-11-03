@@ -11,6 +11,9 @@ export const webhookEndpoints = pgTable("webhook_endpoints", {
   secretEnc: text("secret_enc").notNull(),
   eventTypes: text("event_types").array().notNull(),
   enabled: boolean("enabled").notNull().default(true),
+  consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  disabledReason: text("disabled_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

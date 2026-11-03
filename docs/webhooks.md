@@ -86,3 +86,11 @@ with `POST /v1/orgs/:orgId/webhook-deliveries/:id/resend`.
 
 `POST .../webhook-endpoints/:id/rotate-secret` returns a new secret and invalidates the old one
 immediately. Update your receiver first if you cannot tolerate failed deliveries.
+
+## Automatic disabling
+
+If 10 events in a row fail permanently (all 8 attempts used, or the target is refused as unsafe),
+Ledvara disables the endpoint and stops sending it new events. `GET .../webhook-endpoints` then shows
+`enabled: false`, `disabledAt` and `disabledReason`. A single successful delivery resets the count.
+Fix your receiver, then re-enable with
+`PATCH .../webhook-endpoints/:id` and `{ "enabled": true }`, and use the `/test` route to confirm.

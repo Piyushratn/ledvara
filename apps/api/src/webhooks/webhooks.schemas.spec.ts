@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AppError } from "../errors/app-error.js";
 import { parseOrThrow } from "../validation/parse.js";
-import { createEndpointSchema } from "./webhooks.schemas.js";
+import { createEndpointSchema, updateEndpointSchema } from "./webhooks.schemas.js";
 
 describe("createEndpointSchema", () => {
   it("defaults to all events", () => {
@@ -29,5 +29,18 @@ describe("createEndpointSchema", () => {
         eventTypes: ["Bad Name"],
       }),
     ).toThrowError(AppError);
+  });
+});
+
+describe("updateEndpointSchema", () => {
+  it("accepts a single field", () => {
+    expect(parseOrThrow(updateEndpointSchema, { enabled: false }).enabled).toBe(false);
+    expect(parseOrThrow(updateEndpointSchema, { description: null }).description).toBeNull();
+  });
+
+  it("rejects an empty body and bad values", () => {
+    expect(() => parseOrThrow(updateEndpointSchema, {})).toThrowError(AppError);
+    expect(() => parseOrThrow(updateEndpointSchema, { eventTypes: [] })).toThrowError(AppError);
+    expect(() => parseOrThrow(updateEndpointSchema, { enabled: "yes" })).toThrowError(AppError);
   });
 });

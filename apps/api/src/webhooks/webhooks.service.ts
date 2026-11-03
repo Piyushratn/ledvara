@@ -6,7 +6,7 @@ import { AppError } from "../errors/app-error.js";
 import { ErrorCodes } from "../errors/error-codes.js";
 import { Dependencies } from "../health/dependencies.js";
 import { UnsafeUrlError, validateWebhookUrl } from "./safe-url.js";
-import type { CreateEndpointInput } from "./webhooks.schemas.js";
+import type { CreateEndpointInput, UpdateEndpointInput } from "./webhooks.schemas.js";
 import { encryptSecret, parseKey } from "./webhook-crypto.js";
 
 const MAX_ENDPOINTS_PER_ORG = 20;
@@ -18,6 +18,9 @@ export interface EndpointView {
   description: string | null;
   eventTypes: string[];
   enabled: boolean;
+  consecutiveFailures: number;
+  disabledAt: string | null;
+  disabledReason: string | null;
   createdAt: string;
 }
 
@@ -45,6 +48,9 @@ function toView(row: EndpointRow): EndpointView {
     description: row.description,
     eventTypes: row.eventTypes,
     enabled: row.enabled,
+    consecutiveFailures: row.consecutiveFailures,
+    disabledAt: row.disabledAt?.toISOString() ?? null,
+    disabledReason: row.disabledReason,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -69,6 +75,19 @@ function newSecret(): string {
   return `whsec_${randomBytes(24).toString("base64url")}`;
 }
 
+function checkUrl(raw: string): string {
+  try {
+    return validateWebhookUrl(raw).toString();
+  } catch (error) {
+    if (error instanceof UnsafeUrlError) {
+      throw new AppError(422, ErrorCodes.ValidationFailed, error.message, [
+        { path: "url", message: error.message },
+      ]);
+    }
+    throw error;
+  }
+}
+
 @Injectable()
 export class WebhooksService {
   constructor(@Inject(Dependencies) private readonly deps: Dependencies) {}
@@ -77,17 +96,7 @@ export class WebhooksService {
     orgId: string,
     input: CreateEndpointInput,
   ): Promise<EndpointView & { secret: string }> {
-    let url: URL;
-    try {
-      url = validateWebhookUrl(input.url);
-    } catch (error) {
-      if (error instanceof UnsafeUrlError) {
-        throw new AppError(422, ErrorCodes.ValidationFailed, error.message, [
-          { path: "url", message: error.message },
-        ]);
-      }
-      throw error;
-    }
+    const url = checkUrl(input.url);
 
     const [existing] = await this.deps.db
       .select({ n: count() })
@@ -104,7 +113,7 @@ export class WebhooksService {
       .values({
         id,
         orgId,
-        url: url.toString(),
+        url,
         description: input.description ?? null,
         secretEnc: encryptSecret(secret, this.key(), id),
         eventTypes: input.eventTypes,
@@ -123,6 +132,36 @@ export class WebhooksService {
       .where(eq(schema.webhookEndpoints.orgId, orgId))
       .orderBy(desc(schema.webhookEndpoints.createdAt));
     return rows.map(toView);
+  }
+
+  async update(orgId: string, id: string, input: UpdateEndpointInput): Promise<EndpointView> {
+    const changes: Partial<typeof schema.webhookEndpoints.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    if (input.url !== undefined) changes.url = checkUrl(input.url);
+    if (input.description !== undefined) changes.description = input.description;
+    if (input.eventTypes !== undefined) changes.eventTypes = input.eventTypes;
+    if (input.enabled === true) {
+      // Re-enabling starts the failure streak from zero.
+      changes.enabled = true;
+      changes.consecutiveFailures = 0;
+      changes.disabledAt = null;
+      changes.disabledReason = null;
+    } else if (input.enabled === false) {
+      changes.enabled = false;
+      changes.disabledAt = new Date();
+      changes.disabledReason = "Disabled manually.";
+    }
+
+    const [row] = await this.deps.db
+      .update(schema.webhookEndpoints)
+      .set(changes)
+      .where(and(eq(schema.webhookEndpoints.id, id), eq(schema.webhookEndpoints.orgId, orgId)))
+      .returning();
+    if (!row) {
+      throw new AppError(404, ErrorCodes.NotFound, "Webhook endpoint not found.");
+    }
+    return toView(row);
   }
 
   async remove(orgId: string, id: string): Promise<void> {

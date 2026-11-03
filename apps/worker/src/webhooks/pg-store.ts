@@ -2,6 +2,8 @@ import type { Pool } from "pg";
 import type { AttemptRecord, DeliveryStore, EndpointRecord } from "./deliver.js";
 import type { FanOutStore } from "./fanout.js";
 
+export const AUTO_DISABLE_THRESHOLD = 10;
+
 export class PgWebhookStore implements DeliveryStore, FanOutStore {
   constructor(private readonly pool: Pool) {}
 
@@ -58,6 +60,35 @@ export class PgWebhookStore implements DeliveryStore, FanOutStore {
         record.statusCode,
         record.error,
       ],
+    );
+
+    if (record.outcome === "retry") return;
+    await this.trackStreak(record);
+  }
+
+  /**
+   * One statement updates the streak and, at the threshold, disables the endpoint,
+   * so two workers finishing at the same moment cannot miscount.
+   */
+  private async trackStreak(record: AttemptRecord): Promise<void> {
+    if (record.outcome === "succeeded") {
+      await this.pool.query(
+        "UPDATE webhook_endpoints SET consecutive_failures = 0 WHERE id = $1 AND consecutive_failures <> 0",
+        [record.endpointId],
+      );
+      return;
+    }
+    await this.pool.query(
+      `UPDATE webhook_endpoints SET
+         consecutive_failures = consecutive_failures + 1,
+         enabled = CASE WHEN consecutive_failures + 1 >= $2 THEN false ELSE enabled END,
+         disabled_at = CASE WHEN consecutive_failures + 1 >= $2 AND enabled THEN now() ELSE disabled_at END,
+         disabled_reason = CASE WHEN consecutive_failures + 1 >= $2 AND enabled
+                                THEN 'Disabled automatically after repeated failed deliveries.'
+                                ELSE disabled_reason END,
+         updated_at = now()
+       WHERE id = $1`,
+      [record.endpointId, AUTO_DISABLE_THRESHOLD],
     );
   }
 }

@@ -6,6 +6,7 @@ import {
   HttpCode,
   Inject,
   Param,
+  Patch,
   Post,
   Req,
   SetMetadata,
@@ -17,7 +18,11 @@ import { OrgPermissionGuard, type OrgRequest } from "../orgs/org-permission.guar
 import { PERMISSION_KEY } from "../orgs/require-permission.js";
 import { parseOrThrow } from "../validation/parse.js";
 import { WebhookDispatchService } from "./webhook-dispatch.service.js";
-import { createEndpointSchema, endpointIdSchema } from "./webhooks.schemas.js";
+import {
+  createEndpointSchema,
+  endpointIdSchema,
+  updateEndpointSchema,
+} from "./webhooks.schemas.js";
 import { WebhooksService, type DeliveryView, type EndpointView } from "./webhooks.service.js";
 
 @Controller("v1/orgs/:orgId")
@@ -47,6 +52,24 @@ export class WebhooksController {
   @SetMetadata(PERMISSION_KEY, "api_keys:read")
   async list(@Param("orgId") orgId: string): Promise<{ data: EndpointView[] }> {
     return { data: await this.webhooks.list(orgId) };
+  }
+
+  @Patch("webhook-endpoints/:id")
+  @HttpCode(200)
+  @SetMetadata(PERMISSION_KEY, "api_keys:manage")
+  async update(
+    @Param("orgId") orgId: string,
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() request: OrgRequest,
+  ): Promise<EndpointView> {
+    const endpointId = parseOrThrow(endpointIdSchema, id);
+    const input = parseOrThrow(updateEndpointSchema, body);
+    const updated = await this.webhooks.update(orgId, endpointId, input);
+    await this.record(request, orgId, "webhook_endpoint.updated", endpointId, {
+      fields: Object.keys(input),
+    });
+    return updated;
   }
 
   @Delete("webhook-endpoints/:id")
