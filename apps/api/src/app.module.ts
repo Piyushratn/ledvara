@@ -44,6 +44,8 @@ import { ProviderClient } from "./provider/provider-client.js";
 import { ProviderEventsService } from "./provider/provider-events.service.js";
 import { WebhooksController } from "./webhooks/webhooks.controller.js";
 import { WebhooksService } from "./webhooks/webhooks.service.js";
+import { WebhookDispatchService } from "./webhooks/webhook-dispatch.service.js";
+import { WebhookQueueService } from "./webhooks/webhook-queue.service.js";
 
 @Module({
   controllers: [
@@ -94,6 +96,8 @@ import { WebhooksService } from "./webhooks/webhooks.service.js";
     ProviderClient,
     ProviderEventsService,
     WebhooksService,
+    WebhookDispatchService,
+    WebhookQueueService,
   ],
 })
 export class AppModule {}

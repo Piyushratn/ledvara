@@ -16,6 +16,7 @@ import { AuditService } from "../audit/audit.service.js";
 import { OrgPermissionGuard, type OrgRequest } from "../orgs/org-permission.guard.js";
 import { PERMISSION_KEY } from "../orgs/require-permission.js";
 import { parseOrThrow } from "../validation/parse.js";
+import { WebhookDispatchService } from "./webhook-dispatch.service.js";
 import { createEndpointSchema, endpointIdSchema } from "./webhooks.schemas.js";
 import { WebhooksService, type DeliveryView, type EndpointView } from "./webhooks.service.js";
 
@@ -24,6 +25,7 @@ import { WebhooksService, type DeliveryView, type EndpointView } from "./webhook
 export class WebhooksController {
   constructor(
     @Inject(WebhooksService) private readonly webhooks: WebhooksService,
+    @Inject(WebhookDispatchService) private readonly dispatch: WebhookDispatchService,
     @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
@@ -75,10 +77,38 @@ export class WebhooksController {
     return { ...rotated, note: "The old secret no longer works. Save the new one now." };
   }
 
+  @Post("webhook-endpoints/:id/test")
+  @HttpCode(202)
+  @SetMetadata(PERMISSION_KEY, "api_keys:manage")
+  async test(
+    @Param("orgId") orgId: string,
+    @Param("id") id: string,
+    @Req() request: OrgRequest,
+  ): Promise<{ eventId: string; message: string }> {
+    const endpointId = parseOrThrow(endpointIdSchema, id);
+    const { eventId } = await this.dispatch.sendTest(orgId, endpointId);
+    await this.record(request, orgId, "webhook_endpoint.test_sent", endpointId, { eventId });
+    return { eventId, message: "Test event queued. Check the delivery log for the result." };
+  }
+
   @Get("webhook-deliveries")
   @SetMetadata(PERMISSION_KEY, "api_keys:read")
   async deliveries(@Param("orgId") orgId: string): Promise<{ data: DeliveryView[] }> {
     return { data: await this.webhooks.listDeliveries(orgId) };
+  }
+
+  @Post("webhook-deliveries/:id/resend")
+  @HttpCode(202)
+  @SetMetadata(PERMISSION_KEY, "api_keys:manage")
+  async resend(
+    @Param("orgId") orgId: string,
+    @Param("id") id: string,
+    @Req() request: OrgRequest,
+  ): Promise<{ eventId: string; message: string }> {
+    const deliveryId = parseOrThrow(endpointIdSchema, id);
+    const { eventId } = await this.dispatch.resend(orgId, deliveryId);
+    await this.record(request, orgId, "webhook_delivery.resent", deliveryId, { eventId });
+    return { eventId, message: "Event queued for another delivery attempt." };
   }
 
   private async record(
