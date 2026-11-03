@@ -16,6 +16,8 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "test:integration": "pnpm --filter @ledvara/api test:integration",
+    "test:integration:all": "pnpm --filter @ledvara/api test:integration && pnpm --filter @ledvara/worker test:integration",
+    "smoke": "pnpm --filter @ledvara/worker exec node scripts/smoke.mjs",
     "format": "prettier --write .",
     "db:migrate": "pnpm --filter @ledvara/db migrate",
     "format:check": "prettier --check ."
