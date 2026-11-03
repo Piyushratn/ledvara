@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { AppError } from "../errors/app-error.js";
 import { ErrorCodes } from "../errors/error-codes.js";
 import { Dependencies } from "../health/dependencies.js";
+import { OutboxService } from "../outbox/outbox.service.js";
 import { hashRequest, IdempotencyService, type StoredResponse } from "./idempotency.service.js";
 import { LedgerService, type DbTx } from "./ledger.service.js";
 import type { CreatePayoutInput } from "./payouts.schemas.js";
@@ -24,6 +25,7 @@ export class PayoutsService {
     @Inject(Dependencies) private readonly deps: Dependencies,
     @Inject(LedgerService) private readonly ledger: LedgerService,
     @Inject(IdempotencyService) private readonly idempotency: IdempotencyService,
+    @Inject(OutboxService) private readonly outbox: OutboxService,
   ) {}
 
   async create(
@@ -93,6 +95,15 @@ export class PayoutsService {
         destinationLabel: payout.destinationLabel,
         createdAt: payout.createdAt,
       };
+
+      await this.outbox.enqueue(tx, {
+        orgId,
+        type: "payout.created",
+        aggregateType: "payout",
+        aggregateId: payout.id,
+        payload: { id: payout.id, amountMinor: amount.toString(), status: "pending" },
+      });
+
       return { status: 201, body: JSON.parse(JSON.stringify(view)) as unknown };
     });
   }

@@ -4,6 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { AppError } from "../errors/app-error.js";
 import { ErrorCodes } from "../errors/error-codes.js";
 import { Dependencies } from "../health/dependencies.js";
+import { OutboxService } from "../outbox/outbox.service.js";
 import { hashRequest, IdempotencyService, type StoredResponse } from "./idempotency.service.js";
 import { LedgerService } from "./ledger.service.js";
 import type { CreateRefundInput } from "./refunds.schemas.js";
@@ -14,6 +15,7 @@ export class RefundsService {
     @Inject(Dependencies) private readonly deps: Dependencies,
     @Inject(LedgerService) private readonly ledger: LedgerService,
     @Inject(IdempotencyService) private readonly idempotency: IdempotencyService,
+    @Inject(OutboxService) private readonly outbox: OutboxService,
   ) {}
 
   async refund(
@@ -99,6 +101,19 @@ export class RefundsService {
         .update(schema.transactions)
         .set({ status: "settled" })
         .where(eq(schema.transactions.id, posted.id));
+
+      await this.outbox.enqueue(tx, {
+        orgId,
+        type: "refund.created",
+        aggregateType: "refund",
+        aggregateId: posted.id,
+        payload: {
+          id: posted.id,
+          transferId: original.id,
+          amountMinor: amount.toString(),
+          remainingMinor: (remaining - amount).toString(),
+        },
+      });
 
       return {
         status: 201,

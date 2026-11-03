@@ -4,6 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { AppError } from "../errors/app-error.js";
 import { ErrorCodes } from "../errors/error-codes.js";
 import { Dependencies } from "../health/dependencies.js";
+import { OutboxService } from "../outbox/outbox.service.js";
 import { hashRequest, IdempotencyService, type StoredResponse } from "./idempotency.service.js";
 import { LedgerService } from "./ledger.service.js";
 import type { EntryInput } from "./ledger.types.js";
@@ -14,6 +15,7 @@ export class ReversalsService {
     @Inject(Dependencies) private readonly deps: Dependencies,
     @Inject(LedgerService) private readonly ledger: LedgerService,
     @Inject(IdempotencyService) private readonly idempotency: IdempotencyService,
+    @Inject(OutboxService) private readonly outbox: OutboxService,
   ) {}
 
   async reverse(
@@ -86,6 +88,14 @@ export class ReversalsService {
         .update(schema.transactions)
         .set({ status: "reversed" })
         .where(eq(schema.transactions.id, original.id));
+
+      await this.outbox.enqueue(tx, {
+        orgId,
+        type: "transfer.reversed",
+        aggregateType: "transfer",
+        aggregateId: original.id,
+        payload: { id: original.id, reversalId: posted.id },
+      });
 
       return {
         status: 201,

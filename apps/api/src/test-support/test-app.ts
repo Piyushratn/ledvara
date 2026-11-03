@@ -56,9 +56,11 @@ export async function startTestApp(): Promise<TestApp> {
   const { AllExceptionsFilter } = await import("../errors/all-exceptions.filter.js");
 
   // rawBody: true keeps the exact request bytes on request.rawBody for signature checks.
+  // abortOnError: false turns a Nest startup error into a normal, readable test failure.
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
-    logger: false,
+    logger: ["error"],
     rawBody: true,
+    abortOnError: false,
   });
   app.useGlobalFilters(new AllExceptionsFilter());
 
