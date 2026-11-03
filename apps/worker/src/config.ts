@@ -15,6 +15,14 @@ const schema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  // 0 disables the reconciliation loop.
+  RECONCILE_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .refine((value) => value === 0 || (value >= 10_000 && value <= 86_400_000), {
+      message: "must be 0 or between 10000 and 86400000",
+    })
+    .default(3_600_000),
 });
 
 export type WorkerConfig = z.infer<typeof schema>;

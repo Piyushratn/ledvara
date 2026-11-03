@@ -3,6 +3,7 @@ import { Queue, UnrecoverableError, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import pg from "pg";
 import { loadConfig } from "./config.js";
+import { ReconcileLoop } from "./reconcile.js";
 import { QUEUE_NAME, RelayLoop, type OutboxRow } from "./relay.js";
 import {
   DELIVERY_QUEUE_NAME,
@@ -72,6 +73,16 @@ const relay = new RelayLoop(
   (error) => console.error("relay error:", error instanceof Error ? error.message : error),
 );
 relay.start();
+
+const reconcile =
+  config.RECONCILE_INTERVAL_MS > 0
+    ? new ReconcileLoop(pool, config.RECONCILE_INTERVAL_MS, (message, data) => {
+        if (message.startsWith("Reconciliation ok")) console.log(message);
+        else console.error(message, data ?? "");
+      })
+    : undefined;
+reconcile?.start();
+
 console.log("Worker started: relaying outbox events and delivering webhooks");
 
 let stopping = false;
@@ -81,6 +92,7 @@ const shutdown = async (signal: string): Promise<void> => {
   console.log(`Received ${signal}, stopping worker...`);
   setTimeout(() => process.exit(1), 10_000).unref();
   await relay.stop();
+  await reconcile?.stop();
   await fanOutWorker.close();
   await deliveryWorker.close();
   await eventQueue.close();
