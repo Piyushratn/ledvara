@@ -63,7 +63,11 @@ describe("evaluateRisk", () => {
   });
 
   it("unusual_amount: more than 5x the average and at least INR 1,000", () => {
-    const history = quiet({ priorCount: 10, priorTotalMinor: 1_000_000n }); // average INR 1,000
+    const history = quiet({
+      priorCount: 10,
+      priorTotalMinor: 1_000_000n, // average INR 1,000
+      seenApiKeyIds: ["key-1"], // keep new_api_key out of this test
+    });
     expect(rulesFired(transfer({ amountMinor: 500_001n }), history)).toEqual(["unusual_amount"]);
     expect(rulesFired(transfer({ amountMinor: 500_000n }), history)).toEqual([]);
   });
