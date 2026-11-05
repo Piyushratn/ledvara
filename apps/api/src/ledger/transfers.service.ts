@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { schema } from "@ledvara/db";
 import { and, eq } from "drizzle-orm";
 import { AppError } from "../errors/app-error.js";
@@ -20,8 +20,13 @@ export interface TransferView {
   createdAt: Date;
 }
 
+/** Refusals that say something about the caller's behavior. Validation errors and 404s do not. */
+const LOGGED_FAILURE_CODES = new Set(["insufficient_funds", "account_closed"]);
+
 @Injectable()
 export class TransfersService {
+  private readonly logger = new Logger(TransfersService.name);
+
   constructor(
     @Inject(Dependencies) private readonly deps: Dependencies,
     @Inject(LedgerService) private readonly ledger: LedgerService,
@@ -33,6 +38,24 @@ export class TransfersService {
     orgId: string,
     idempotencyKey: string,
     input: CreateTransferInput,
+    apiKeyId: string | null = null,
+  ): Promise<StoredResponse & { replayed: boolean }> {
+    try {
+      return await this.createInTransaction(orgId, idempotencyKey, input, apiKeyId);
+    } catch (error) {
+      // The refusal rolled everything back, so it is recorded here, outside that transaction.
+      if (error instanceof AppError && LOGGED_FAILURE_CODES.has(error.code)) {
+        await this.recordFailure(orgId, input, apiKeyId, error.code);
+      }
+      throw error;
+    }
+  }
+
+  private async createInTransaction(
+    orgId: string,
+    idempotencyKey: string,
+    input: CreateTransferInput,
+    apiKeyId: string | null,
   ): Promise<StoredResponse & { replayed: boolean }> {
     const hash = hashRequest("POST", "/v1/transfers", input);
     return this.idempotency.run(orgId, idempotencyKey, hash, async (tx) => {
@@ -84,11 +107,32 @@ export class TransfersService {
           amountMinor: amount.toString(),
           currency: view.currency,
           reference: posted.reference,
+          apiKeyId,
         },
       });
 
       return { status: 201, body: JSON.parse(JSON.stringify(view)) as unknown };
     });
+  }
+
+  private async recordFailure(
+    orgId: string,
+    input: CreateTransferInput,
+    apiKeyId: string | null,
+    code: string,
+  ): Promise<void> {
+    try {
+      await this.deps.db.insert(schema.transferFailures).values({
+        orgId,
+        fromAccountId: input.fromAccountId,
+        apiKeyId,
+        amountMinor: BigInt(input.amountMinor),
+        code,
+      });
+    } catch (loggingError) {
+      // Logging a failure must never hide the real error from the client.
+      this.logger.error({ err: loggingError }, "Failed to record transfer failure");
+    }
   }
 
   async get(orgId: string, id: string): Promise<TransferView> {

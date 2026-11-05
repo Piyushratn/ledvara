@@ -55,7 +55,7 @@ export class TransfersController {
   ): Promise<unknown> {
     const key = requireIdempotencyKey(request);
     const input = parseOrThrow(createTransferSchema, body);
-    const result = await this.transfers.create(request.apiKey.orgId, key, input);
+    const result = await this.transfers.create(request.apiKey.orgId, key, input, request.apiKey.id);
     void reply.status(result.status);
     void reply.header("Idempotent-Replayed", result.replayed ? "true" : "false");
     return result.body;

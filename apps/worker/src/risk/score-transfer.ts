@@ -62,7 +62,7 @@ async function loadHistory(
   );
   const row = rows[0];
 
-  // Keys that created earlier transfers from this account (empty until the API records keys).
+  // Keys that created earlier transfers from this account.
   let seenApiKeyIds: string[] = [];
   if (apiKeyId !== null) {
     const seen = await pool.query<{ key: string }>(
@@ -78,14 +78,24 @@ async function loadHistory(
     seenApiKeyIds = seen.rows.map((r) => r.key);
   }
 
+  // Refused attempts (overdrafts, closed accounts) in the 24 hours before this transfer.
+  const failures = await pool.query<{ n: number }>(
+    `SELECT count(*)::int AS n
+       FROM transfer_failures
+      WHERE org_id = $1
+        AND from_account_id = $2
+        AND created_at < $3::timestamptz
+        AND created_at >= $3::timestamptz - interval '24 hours'`,
+    [orgId, accountId, createdAt],
+  );
+
   return {
     countLast10Min: row?.count_10m ?? 0,
     amountLastHourMinor: BigInt(row?.amount_hour ?? "0"),
     priorCount: row?.prior_count ?? 0,
     priorTotalMinor: BigInt(row?.prior_total ?? "0"),
     seenApiKeyIds,
-    // Failed attempts are not recorded yet (they roll back), so this stays 0 until Step 78.
-    failuresLast24h: 0,
+    failuresLast24h: failures.rows[0]?.n ?? 0,
     roundCountLast24h: row?.round_24h ?? 0,
   };
 }
@@ -137,7 +147,7 @@ export async function scoreOutboxEvent(
     apiKeyId,
     createdAt,
     history,
-    notes: { failuresTracked: false },
+    notes: { failuresTracked: true, apiKeyTracked: apiKeyId !== null },
   };
 
   const client = await pool.connect();

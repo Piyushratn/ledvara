@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -55,4 +56,22 @@ export const reviewItems = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("review_items_org_status_idx").on(table.orgId, table.status, table.createdAt)],
+);
+
+export const transferFailures = pgTable(
+  "transfer_failures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    fromAccountId: uuid("from_account_id").notNull(),
+    apiKeyId: uuid("api_key_id"),
+    amountMinor: bigint("amount_minor", { mode: "bigint" }).notNull(),
+    code: text("code").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("transfer_failures_account_idx").on(table.orgId, table.fromAccountId, table.createdAt),
+  ],
 );
