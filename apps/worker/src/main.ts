@@ -5,6 +5,7 @@ import pg from "pg";
 import { loadConfig } from "./config.js";
 import { ReconcileLoop } from "./reconcile.js";
 import { QUEUE_NAME, RelayLoop, type OutboxRow } from "./relay.js";
+import { scoreOutboxEvent } from "./risk/score-transfer.js";
 import {
   DELIVERY_QUEUE_NAME,
   MAX_DELIVERY_ATTEMPTS,
@@ -29,12 +30,26 @@ const store = new PgWebhookStore(pool);
 const eventQueue = new Queue(QUEUE_NAME, { connection });
 const deliveryQueue = new Queue(DELIVERY_QUEUE_NAME, { connection });
 
-// Stage 1: each outbox event becomes one delivery job per matching endpoint.
+// Stage 1: each outbox event becomes one delivery job per matching endpoint,
+// and settled transfers are risk-scored.
 const fanOutWorker = new Worker(
   QUEUE_NAME,
   async (job) => {
-    const count = await fanOut(job.data as OutboxRow, store, deliveryQueue);
+    const event = job.data as OutboxRow;
+    const count = await fanOut(event, store, deliveryQueue);
     console.log(`event ${job.id} ${job.name}: ${count} delivery job(s)`);
+
+    // Risk scoring never moves money and must never fail the webhook job.
+    try {
+      const result = await scoreOutboxEvent(pool, event);
+      if (result.status === "scored" && result.flagged) {
+        console.log(
+          `risk: transfer ${event.aggregate_id} flagged for review (score ${result.score})`,
+        );
+      }
+    } catch (error) {
+      console.error("risk scoring failed:", error instanceof Error ? error.message : error);
+    }
   },
   { connection, concurrency: 5 },
 );
@@ -83,7 +98,7 @@ const reconcile =
     : undefined;
 reconcile?.start();
 
-console.log("Worker started: relaying outbox events and delivering webhooks");
+console.log("Worker started: relaying outbox events, delivering webhooks, scoring transfers");
 
 let stopping = false;
 const shutdown = async (signal: string): Promise<void> => {
