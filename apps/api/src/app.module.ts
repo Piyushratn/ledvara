@@ -42,12 +42,14 @@ import { OutboxService } from "./outbox/outbox.service.js";
 import { ProviderCallbacksController } from "./provider/provider-callbacks.controller.js";
 import { ProviderClient } from "./provider/provider-client.js";
 import { ProviderEventsService } from "./provider/provider-events.service.js";
-import { WebhooksController } from "./webhooks/webhooks.controller.js";
-import { WebhooksService } from "./webhooks/webhooks.service.js";
-import { WebhookDispatchService } from "./webhooks/webhook-dispatch.service.js";
-import { WebhookQueueService } from "./webhooks/webhook-queue.service.js";
 import { ReconciliationController } from "./reconciliation/reconciliation.controller.js";
 import { ReconciliationService } from "./reconciliation/reconciliation.service.js";
+import { ReviewController } from "./risk/review.controller.js";
+import { ReviewService } from "./risk/review.service.js";
+import { WebhookDispatchService } from "./webhooks/webhook-dispatch.service.js";
+import { WebhookQueueService } from "./webhooks/webhook-queue.service.js";
+import { WebhooksController } from "./webhooks/webhooks.controller.js";
+import { WebhooksService } from "./webhooks/webhooks.service.js";
 
 @Module({
   controllers: [
@@ -67,6 +69,7 @@ import { ReconciliationService } from "./reconciliation/reconciliation.service.j
     ProviderCallbacksController,
     WebhooksController,
     ReconciliationController,
+    ReviewController,
   ],
   providers: [
     Dependencies,
@@ -99,9 +102,10 @@ import { ReconciliationService } from "./reconciliation/reconciliation.service.j
     ProviderClient,
     ProviderEventsService,
     WebhooksService,
-    WebhookDispatchService,
     WebhookQueueService,
+    WebhookDispatchService,
     ReconciliationService,
+    ReviewService,
   ],
 })
 export class AppModule {}

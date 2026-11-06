@@ -105,3 +105,16 @@ organization's findings:
 
 Amounts are strings in minor units (paise). Treat this event as an incident: do not retry money
 movements until it is resolved. `GET /v1/orgs/:orgId/reconciliation` shows recent runs.
+
+## Events: `risk.review_required` and `risk.review_decided`
+
+`risk.review_required` is sent when the risk rules flag a settled transfer for manual review. The
+`data` field has the review item `id`, the `transactionId`, the `score` (0 to 100), the `level`, the
+plain-language `reasons`, the `amountMinor` (a string, in paise) and the `fromAccountId`.
+
+`risk.review_decided` is sent when a reviewer approves or rejects the item. `data` has the `id`,
+`transactionId`, `decision` (`approved` or `rejected`) and the reviewer's `note`.
+
+Flagging and deciding never change balances. To undo a rejected transfer, call
+`POST /v1/transfers/:id/reverse` separately. Review items are listed at
+`GET /v1/orgs/:orgId/review-items`.

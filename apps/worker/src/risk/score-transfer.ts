@@ -176,12 +176,34 @@ export async function scoreOutboxEvent(
       return { status: "duplicate" };
     }
     if (assessment.flagged) {
-      await client.query(
+      const review = await client.query<{ id: string }>(
         `INSERT INTO review_items (org_id, transaction_id, assessment_id)
          VALUES ($1, $2, $3)
-         ON CONFLICT (transaction_id) DO NOTHING`,
+         ON CONFLICT (transaction_id) DO NOTHING
+         RETURNING id`,
         [event.org_id, payload.id, assessmentId],
       );
+      const reviewId = review.rows[0]?.id;
+      if (reviewId) {
+        // Same transaction as the review item: both exist or neither does.
+        await client.query(
+          `INSERT INTO outbox_events (org_id, type, aggregate_type, aggregate_id, payload)
+           VALUES ($1, 'risk.review_required', 'review', $2, $3::jsonb)`,
+          [
+            event.org_id,
+            reviewId,
+            stringifyWithBigint({
+              id: reviewId,
+              transactionId: payload.id,
+              score: assessment.score,
+              level: assessment.level,
+              reasons: assessment.reasons,
+              amountMinor: payload.amountMinor,
+              fromAccountId: payload.fromAccountId,
+            }),
+          ],
+        );
+      }
     }
     await client.query("COMMIT");
     return { status: "scored", score: assessment.score, flagged: assessment.flagged };
