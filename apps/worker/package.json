@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "risk:report": "tsx scripts/risk-report.ts",
     "lint": "eslint ."
   },
   "dependencies": {
