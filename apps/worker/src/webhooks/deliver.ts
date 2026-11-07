@@ -9,7 +9,7 @@ export const MAX_DELIVERY_ATTEMPTS = 8;
 /** BullMQ options for every delivery job: 10s, 20s, 40s ... between attempts. */
 export const DELIVERY_JOB_OPTIONS = {
   attempts: MAX_DELIVERY_ATTEMPTS,
-  backoff: { type: "exponential" as const, delay: 10_000 },
+  backoff: { type: "exponential" as const, delay: 10_000, jitter: 0.5 },
   removeOnComplete: 1000,
   removeOnFail: 5000,
 };

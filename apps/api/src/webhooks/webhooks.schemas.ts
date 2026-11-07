@@ -19,7 +19,18 @@ export const updateEndpointSchema = z
     message: "Provide at least one field to change.",
   });
 
+export const listDeliveriesSchema = z.object({
+  status: z.enum(["pending", "succeeded", "failed"]).optional(),
+  endpointId: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+export const replayFailedSchema = z.object({
+  endpointId: z.string().uuid().optional(),
+});
+
 export const endpointIdSchema = z.string().uuid();
 
 export type CreateEndpointInput = z.infer<typeof createEndpointSchema>;
 export type UpdateEndpointInput = z.infer<typeof updateEndpointSchema>;
+export type ListDeliveriesInput = z.infer<typeof listDeliveriesSchema>;

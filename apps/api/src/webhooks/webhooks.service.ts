@@ -1,16 +1,19 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { schema } from "@ledvara/db";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, type SQL } from "drizzle-orm";
 import { AppError } from "../errors/app-error.js";
 import { ErrorCodes } from "../errors/error-codes.js";
 import { Dependencies } from "../health/dependencies.js";
 import { UnsafeUrlError, validateWebhookUrl } from "./safe-url.js";
-import type { CreateEndpointInput, UpdateEndpointInput } from "./webhooks.schemas.js";
+import type {
+  CreateEndpointInput,
+  ListDeliveriesInput,
+  UpdateEndpointInput,
+} from "./webhooks.schemas.js";
 import { encryptSecret, parseKey } from "./webhook-crypto.js";
 
 const MAX_ENDPOINTS_PER_ORG = 20;
-const DELIVERY_LIST_LIMIT = 50;
 
 export interface EndpointView {
   id: string;
@@ -187,13 +190,18 @@ export class WebhooksService {
     return { id, secret };
   }
 
-  async listDeliveries(orgId: string): Promise<DeliveryView[]> {
+  async listDeliveries(orgId: string, input: ListDeliveriesInput): Promise<DeliveryView[]> {
+    const conditions: SQL[] = [eq(schema.webhookDeliveries.orgId, orgId)];
+    if (input.status) conditions.push(eq(schema.webhookDeliveries.status, input.status));
+    if (input.endpointId) {
+      conditions.push(eq(schema.webhookDeliveries.endpointId, input.endpointId));
+    }
     const rows = await this.deps.db
       .select()
       .from(schema.webhookDeliveries)
-      .where(eq(schema.webhookDeliveries.orgId, orgId))
+      .where(and(...conditions))
       .orderBy(desc(schema.webhookDeliveries.createdAt))
-      .limit(DELIVERY_LIST_LIMIT);
+      .limit(input.limit);
     return rows.map(toDeliveryView);
   }
 

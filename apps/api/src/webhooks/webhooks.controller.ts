@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   SetMetadata,
   UseGuards,
@@ -21,6 +22,8 @@ import { WebhookDispatchService } from "./webhook-dispatch.service.js";
 import {
   createEndpointSchema,
   endpointIdSchema,
+  listDeliveriesSchema,
+  replayFailedSchema,
   updateEndpointSchema,
 } from "./webhooks.schemas.js";
 import { WebhooksService, type DeliveryView, type EndpointView } from "./webhooks.service.js";
@@ -116,8 +119,32 @@ export class WebhooksController {
 
   @Get("webhook-deliveries")
   @SetMetadata(PERMISSION_KEY, "api_keys:read")
-  async deliveries(@Param("orgId") orgId: string): Promise<{ data: DeliveryView[] }> {
-    return { data: await this.webhooks.listDeliveries(orgId) };
+  async deliveries(
+    @Param("orgId") orgId: string,
+    @Query() query: unknown,
+  ): Promise<{ data: DeliveryView[] }> {
+    const input = parseOrThrow(listDeliveriesSchema, query);
+    return { data: await this.webhooks.listDeliveries(orgId, input) };
+  }
+
+  @Post("webhook-deliveries/replay-failed")
+  @HttpCode(202)
+  @SetMetadata(PERMISSION_KEY, "api_keys:manage")
+  async replayFailed(
+    @Param("orgId") orgId: string,
+    @Body() body: unknown,
+    @Req() request: OrgRequest,
+  ): Promise<{ queued: number; skipped: number; message: string }> {
+    const input = parseOrThrow(replayFailedSchema, body ?? {});
+    const result = await this.dispatch.replayFailed(orgId, input.endpointId);
+    await this.record(request, orgId, "webhook_delivery.replay_failed", input.endpointId ?? orgId, {
+      ...result,
+      endpointId: input.endpointId ?? null,
+    });
+    return {
+      ...result,
+      message: "Failed deliveries queued for another attempt. Check the delivery log for results.",
+    };
   }
 
   @Post("webhook-deliveries/:id/resend")

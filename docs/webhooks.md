@@ -118,3 +118,18 @@ plain-language `reasons`, the `amountMinor` (a string, in paise) and the `fromAc
 Flagging and deciding never change balances. To undo a rejected transfer, call
 `POST /v1/transfers/:id/reverse` separately. Review items are listed at
 `GET /v1/orgs/:orgId/review-items`.
+
+## Jitter and the dead-letter list
+
+Retry delays are exponential (10 seconds, then 20, 40 and so on) with random jitter, so a receiver
+that recovers from an outage is not hit by every failed delivery at once.
+
+A delivery that uses all 8 attempts, or is refused as an unsafe target, is dead-lettered: its status
+becomes `failed`. List them with `GET /v1/orgs/:orgId/webhook-deliveries?status=failed`. Add
+`endpointId=...` to narrow the list.
+
+`POST /v1/orgs/:orgId/webhook-deliveries/replay-failed` re-queues up to 100 failed deliveries (send
+`{ "endpointId": "..." }` to limit it to one endpoint). Only events that are still stored on our side
+and endpoints that are enabled are replayed. Test events cannot be replayed: send a new one with the
+`/test` route. If an endpoint was disabled automatically, fix the receiver and re-enable the endpoint
+first.

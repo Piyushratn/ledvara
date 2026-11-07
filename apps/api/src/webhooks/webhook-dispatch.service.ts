@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { schema } from "@ledvara/db";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 import { AppError } from "../errors/app-error.js";
 import { ErrorCodes } from "../errors/error-codes.js";
 import { Dependencies } from "../health/dependencies.js";
 import { WebhookQueueService, type DeliveryJobData } from "./webhook-queue.service.js";
+
+const REPLAY_BATCH = 100;
 
 @Injectable()
 export class WebhookDispatchService {
@@ -74,6 +76,52 @@ export class WebhookDispatchService {
       .set({ status: "pending" })
       .where(eq(schema.webhookDeliveries.id, delivery.id));
     return { eventId: event.id };
+  }
+
+  /**
+   * Re-queues up to 100 dead-lettered (failed) deliveries. Only deliveries that can really be
+   * rebuilt are picked: the event must still be in the outbox and the endpoint must be enabled.
+   * Test pings never go through the outbox, so they are never selected.
+   */
+  async replayFailed(
+    orgId: string,
+    endpointId?: string,
+  ): Promise<{ queued: number; skipped: number }> {
+    const conditions: SQL[] = [
+      eq(schema.webhookDeliveries.orgId, orgId),
+      eq(schema.webhookDeliveries.status, "failed"),
+      sql`exists (select 1 from outbox_events o
+                   where o.id = ${schema.webhookDeliveries.eventId}
+                     and o.org_id = ${schema.webhookDeliveries.orgId})`,
+      sql`exists (select 1 from webhook_endpoints e
+                   where e.id = ${schema.webhookDeliveries.endpointId} and e.enabled)`,
+    ];
+    if (endpointId) conditions.push(eq(schema.webhookDeliveries.endpointId, endpointId));
+
+    const failed = await this.deps.db
+      .select({ id: schema.webhookDeliveries.id })
+      .from(schema.webhookDeliveries)
+      .where(and(...conditions))
+      .orderBy(desc(schema.webhookDeliveries.createdAt))
+      .limit(REPLAY_BATCH);
+
+    let queued = 0;
+    let skipped = 0;
+    for (const row of failed) {
+      try {
+        await this.resend(orgId, row.id);
+        queued += 1;
+      } catch (error) {
+        // Something changed between the query and the resend (for example, the endpoint was
+        // disabled). Skip that one and keep going.
+        if (error instanceof AppError) {
+          skipped += 1;
+          continue;
+        }
+        throw error;
+      }
+    }
+    return { queued, skipped };
   }
 
   private async requireEnabledEndpoint(orgId: string, endpointId: string): Promise<void> {

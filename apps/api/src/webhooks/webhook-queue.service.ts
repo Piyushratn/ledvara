@@ -7,7 +7,7 @@ import { loadEnv } from "../config/env.js";
 export const DELIVERY_QUEUE_NAME = "webhook-deliveries";
 export const DELIVERY_JOB_OPTIONS = {
   attempts: 8,
-  backoff: { type: "exponential" as const, delay: 10_000 },
+  backoff: { type: "exponential" as const, delay: 10_000, jitter: 0.5 },
   removeOnComplete: 1000,
   removeOnFail: 5000,
 };
