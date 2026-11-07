@@ -3,6 +3,7 @@ import { Queue, UnrecoverableError, Worker } from "bullmq";
 import { Redis } from "ioredis";
 import pg from "pg";
 import { loadConfig } from "./config.js";
+import { httpReportFetcher, ProviderReconLoop } from "./provider-recon/run.js";
 import { ReconcileLoop } from "./reconcile.js";
 import { QUEUE_NAME, RelayLoop, type OutboxRow } from "./relay.js";
 import { scoreOutboxEvent } from "./risk/score-transfer.js";
@@ -98,6 +99,21 @@ const reconcile =
     : undefined;
 reconcile?.start();
 
+const providerRecon =
+  config.PROVIDER_RECON_INTERVAL_MS > 0
+    ? new ProviderReconLoop(
+        pool,
+        httpReportFetcher(config.PROVIDER_URL, config.PROVIDER_API_KEY),
+        config.PROVIDER_RECON_GRACE_MS,
+        config.PROVIDER_RECON_INTERVAL_MS,
+        (message, data) => {
+          if (message.startsWith("Provider reconciliation ok")) console.log(message);
+          else console.error(message, data ?? "");
+        },
+      )
+    : undefined;
+providerRecon?.start();
+
 console.log("Worker started: relaying outbox events, delivering webhooks, scoring transfers");
 
 let stopping = false;
@@ -108,6 +124,7 @@ const shutdown = async (signal: string): Promise<void> => {
   setTimeout(() => process.exit(1), 10_000).unref();
   await relay.stop();
   await reconcile?.stop();
+  await providerRecon?.stop();
   await fanOutWorker.close();
   await deliveryWorker.close();
   await eventQueue.close();

@@ -42,6 +42,8 @@ import { OutboxService } from "./outbox/outbox.service.js";
 import { ProviderCallbacksController } from "./provider/provider-callbacks.controller.js";
 import { ProviderClient } from "./provider/provider-client.js";
 import { ProviderEventsService } from "./provider/provider-events.service.js";
+import { ProviderReconciliationController } from "./provider-reconciliation/provider-reconciliation.controller.js";
+import { ProviderReconciliationService } from "./provider-reconciliation/provider-reconciliation.service.js";
 import { ReconciliationController } from "./reconciliation/reconciliation.controller.js";
 import { ReconciliationService } from "./reconciliation/reconciliation.service.js";
 import { ReviewController } from "./risk/review.controller.js";
@@ -70,6 +72,7 @@ import { WebhooksService } from "./webhooks/webhooks.service.js";
     WebhooksController,
     ReconciliationController,
     ReviewController,
+    ProviderReconciliationController,
   ],
   providers: [
     Dependencies,
@@ -106,6 +109,7 @@ import { WebhooksService } from "./webhooks/webhooks.service.js";
     WebhookDispatchService,
     ReconciliationService,
     ReviewService,
+    ProviderReconciliationService,
   ],
 })
 export class AppModule {}

@@ -23,6 +23,17 @@ const schema = z.object({
       message: "must be 0 or between 10000 and 86400000",
     })
     .default(3_600_000),
+  PROVIDER_URL: z.string().url().default("http://localhost:4000"),
+  PROVIDER_API_KEY: z.string().min(1).default("sim-dev-key"),
+  // 0 disables the provider reconciliation loop.
+  PROVIDER_RECON_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .refine((value) => value === 0 || (value >= 10_000 && value <= 86_400_000), {
+      message: "must be 0 or between 10000 and 86400000",
+    })
+    .default(3_600_000),
+  PROVIDER_RECON_GRACE_MS: z.coerce.number().int().min(0).max(3_600_000).default(120_000),
 });
 
 export type WorkerConfig = z.infer<typeof schema>;
