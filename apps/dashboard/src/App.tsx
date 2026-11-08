@@ -1,8 +1,17 @@
-import { Link, Route, Routes } from "react-router";
+import { Link, Route, Routes, useNavigate } from "react-router";
+import { RequireAuth } from "./auth/RequireAuth";
+import { useAuth } from "./auth/AuthContext";
+import { AppPage } from "./pages/AppPage";
 import { HomePage } from "./pages/HomePage";
+import { LoginPage } from "./pages/LoginPage";
+import { SignUpPage } from "./pages/SignUpPage";
 import { StatusPage } from "./pages/StatusPage";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 
 export function App() {
+  const { status, logout } = useAuth();
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       <header className="border-b border-neutral-200 dark:border-neutral-800">
@@ -14,12 +23,43 @@ export function App() {
           <Link className="text-sm hover:text-accent" to="/status">
             Status
           </Link>
+          <span className="flex-1" />
+          {status === "signedIn" ? (
+            <>
+              <Link className="text-sm hover:text-accent" to="/app">
+                Account
+              </Link>
+              <button
+                type="button"
+                className="text-sm hover:text-accent"
+                onClick={() => void logout().then(() => navigate("/"))}
+              >
+                Sign out
+              </button>
+            </>
+          ) : null}
+          {status === "signedOut" ? (
+            <>
+              <Link className="text-sm hover:text-accent" to="/login">
+                Sign in
+              </Link>
+              <Link className="text-sm hover:text-accent" to="/signup">
+                Sign up
+              </Link>
+            </>
+          ) : null}
         </nav>
       </header>
       <main className="mx-auto max-w-4xl px-4 py-8">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/status" element={<StatusPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route element={<RequireAuth />}>
+            <Route path="/app" element={<AppPage />} />
+          </Route>
           <Route path="*" element={<p>Page not found.</p>} />
         </Routes>
       </main>
