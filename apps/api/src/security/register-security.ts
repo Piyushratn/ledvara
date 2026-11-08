@@ -16,7 +16,13 @@ export async function registerSecurity(app: NestFastifyApplication, env: Env): P
       callback(null, false);
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "X-Request-Id"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Idempotency-Key",
+      "X-Request-Id",
+      "X-Requested-With",
+    ],
     exposedHeaders: ["X-Request-Id"],
     credentials: true,
     maxAge: 600,

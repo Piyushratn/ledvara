@@ -7,18 +7,20 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from "@nestjs/common";
-import type { FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { AuditService, type AuditEventView } from "../audit/audit.service.js";
+import { loadEnv } from "../config/env.js";
 import { AppError } from "../errors/app-error.js";
 import { parseOrThrow } from "../validation/parse.js";
 import { AccessTokenGuard, type AuthenticatedRequest } from "./access-token.guard.js";
 import {
   forgotPasswordSchema,
   loginSchema,
-  refreshSchema,
+  refreshBodySchema,
   resetPasswordSchema,
   signUpSchema,
   twoFactorDisableSchema,
@@ -35,6 +37,13 @@ import {
 } from "./auth.service.js";
 import { LoginThrottleService } from "./login-throttle.service.js";
 import { PasswordResetService } from "./password-reset.service.js";
+import {
+  clearRefreshCookie,
+  readCookie,
+  REFRESH_COOKIE_NAME,
+  REQUESTED_WITH,
+  serializeRefreshCookie,
+} from "./refresh-cookie.js";
 import { SessionsService } from "./sessions.service.js";
 import { TwoFactorService } from "./two-factor.service.js";
 
@@ -54,6 +63,9 @@ const securityQuerySchema = z.object({
 
 @Controller("v1/auth")
 export class AuthController {
+  private readonly secureCookies = loadEnv().NODE_ENV === "production";
+  private readonly cookieMaxAgeSeconds = loadEnv().REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60;
+
   constructor(
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(SessionsService) private readonly sessions: SessionsService,
@@ -62,6 +74,17 @@ export class AuthController {
     @Inject(TwoFactorService) private readonly twoFactor: TwoFactorService,
     @Inject(AuditService) private readonly audit: AuditService,
   ) {}
+
+  private setRefreshCookie(reply: FastifyReply, token: string): void {
+    void reply.header(
+      "set-cookie",
+      serializeRefreshCookie(token, this.cookieMaxAgeSeconds, this.secureCookies),
+    );
+  }
+
+  private clearCookie(reply: FastifyReply): void {
+    void reply.header("set-cookie", clearRefreshCookie(this.secureCookies));
+  }
 
   private recordUserEvent(
     userId: string,
@@ -102,6 +125,7 @@ export class AuthController {
   async login(
     @Body() body: unknown,
     @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<LoginResult | TwoFactorRequiredResult> {
     const input = parseOrThrow(loginSchema, body);
     await this.throttle.assertAllowed(request.ip ?? null, input.email);
@@ -112,6 +136,7 @@ export class AuthController {
       if (!("twoFactorRequired" in result)) {
         await this.throttle.recordSuccess(input.email);
         await this.recordUserEvent(result.user.id, "login.succeeded", request);
+        this.setRefreshCookie(reply, result.refreshToken);
       }
       return result;
     } catch (error) {
@@ -132,6 +157,7 @@ export class AuthController {
   async loginTwoFactor(
     @Body() body: unknown,
     @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<LoginResult> {
     const input = parseOrThrow(twoFactorLoginSchema, body);
     const challenge = this.twoFactor.readChallenge(input.challengeToken);
@@ -146,6 +172,7 @@ export class AuthController {
       await this.recordUserEvent(result.user.id, "login.succeeded", request, {
         secondFactor: true,
       });
+      this.setRefreshCookie(reply, result.refreshToken);
       return result;
     } catch (error) {
       if (error instanceof AppError) {
@@ -162,9 +189,39 @@ export class AuthController {
 
   @Post("refresh")
   @HttpCode(200)
-  async refresh(@Body() body: unknown, @Req() request: FastifyRequest): Promise<TokenPair> {
-    const input = parseOrThrow(refreshSchema, body);
-    return this.auth.refresh(input.refreshToken, metaFrom(request));
+  async refresh(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<TokenPair> {
+    const input = parseOrThrow(refreshBodySchema, body ?? {});
+    const fromCookie = input.refreshToken === undefined;
+
+    let token = input.refreshToken ?? null;
+    if (token === null) {
+      // Cookie-based refresh: require a header a cross-site page cannot send.
+      if (request.headers["x-requested-with"] !== REQUESTED_WITH) {
+        throw new AppError(403, "csrf_check_failed", "A required request header is missing.");
+      }
+      token = readCookie(request.headers.cookie, REFRESH_COOKIE_NAME);
+      if (token === null) {
+        throw new AppError(
+          401,
+          "invalid_refresh_token",
+          "Your session is no longer valid. Please log in again.",
+        );
+      }
+    }
+
+    try {
+      const pair = await this.auth.refresh(token, metaFrom(request));
+      this.setRefreshCookie(reply, pair.refreshToken);
+      return pair;
+    } catch (error) {
+      // A cookie that no longer works is dropped so the browser stops sending it.
+      if (fromCookie && error instanceof AppError) this.clearCookie(reply);
+      throw error;
+    }
   }
 
   @Post("forgot-password")
@@ -242,18 +299,26 @@ export class AuthController {
   @Post("logout")
   @UseGuards(AccessTokenGuard)
   @HttpCode(200)
-  async logout(@Req() request: AuthenticatedRequest): Promise<{ message: string }> {
+  async logout(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<{ message: string }> {
     await this.sessions.revokeFamily(request.auth.sessionId);
     await this.recordUserEvent(request.auth.userId, "logout", request);
+    this.clearCookie(reply);
     return { message: "Logged out." };
   }
 
   @Post("logout-all")
   @UseGuards(AccessTokenGuard)
   @HttpCode(200)
-  async logoutAll(@Req() request: AuthenticatedRequest): Promise<{ message: string }> {
+  async logoutAll(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<{ message: string }> {
     await this.sessions.revokeAllForUser(request.auth.userId);
     await this.recordUserEvent(request.auth.userId, "logout.all", request);
+    this.clearCookie(reply);
     return { message: "Logged out of all devices." };
   }
 
