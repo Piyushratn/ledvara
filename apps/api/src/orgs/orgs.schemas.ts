@@ -9,7 +9,8 @@ export const createOrgSchema = z.object({
     .regex(
       /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/,
       "Slug must be 3-50 characters: lowercase letters, numbers and hyphens, not starting or ending with a hyphen",
-    ),
+    )
+    .optional(),
 });
 
 export type CreateOrgInput = z.infer<typeof createOrgSchema>;

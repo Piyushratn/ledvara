@@ -52,6 +52,7 @@ import { WebhookDispatchService } from "./webhooks/webhook-dispatch.service.js";
 import { WebhookQueueService } from "./webhooks/webhook-queue.service.js";
 import { WebhooksController } from "./webhooks/webhooks.controller.js";
 import { WebhooksService } from "./webhooks/webhooks.service.js";
+import { OrgAccountsController } from "./accounts/org-accounts.controller.js";
 
 @Module({
   controllers: [
@@ -73,6 +74,7 @@ import { WebhooksService } from "./webhooks/webhooks.service.js";
     ReconciliationController,
     ReviewController,
     ProviderReconciliationController,
+    OrgAccountsController,
   ],
   providers: [
     Dependencies,
