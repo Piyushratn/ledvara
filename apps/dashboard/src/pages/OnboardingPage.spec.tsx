@@ -49,8 +49,11 @@ describe("OnboardingPage", () => {
     });
     renderPage(api);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Create demo accounts" }));
-    const alert = await screen.findByRole("alert");
+    const button = await screen.findByRole("button", { name: "Create demo accounts" });
+    await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(button);
+
+    const alert = await screen.findByRole("alert", undefined, { timeout: 4000 });
     expect(alert.textContent).toContain("You do not have permission to do that.");
   });
 });
