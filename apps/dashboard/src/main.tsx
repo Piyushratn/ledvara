@@ -4,10 +4,14 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { App } from "./App";
 import { AuthProvider } from "./auth/AuthContext";
+import { applyPreference, loadPreference } from "./lib/theme";
 import "./index.css";
 
 const container = document.getElementById("root");
 if (!container) throw new Error("Missing #root element");
+
+// Apply the saved theme before the first paint of the app.
+applyPreference(loadPreference());
 
 const queryClient = new QueryClient();
 

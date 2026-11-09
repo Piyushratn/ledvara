@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode, so the theme toggle works as well as the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-accent: #0d9488;
   --color-accent-hover: #0f766e;

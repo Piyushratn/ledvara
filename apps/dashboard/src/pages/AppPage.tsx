@@ -59,12 +59,17 @@ export function AppPage({ api = orgApi }: { api?: OrgApi }) {
                 <span>
                   {org.name} <span className="text-xs text-neutral-500">({org.role})</span>
                 </span>
-                <Link
-                  className="text-sm text-accent hover:underline"
-                  to={`/orgs/${org.id}/onboarding`}
-                >
-                  Get started
-                </Link>
+                <span className="flex gap-4">
+                  <Link className="text-sm text-accent hover:underline" to={`/orgs/${org.id}`}>
+                    Open
+                  </Link>
+                  <Link
+                    className="text-sm text-accent hover:underline"
+                    to={`/orgs/${org.id}/onboarding`}
+                  >
+                    Get started
+                  </Link>
+                </span>
               </li>
             ))}
           </ul>
