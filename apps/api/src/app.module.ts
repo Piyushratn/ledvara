@@ -53,6 +53,8 @@ import { WebhookQueueService } from "./webhooks/webhook-queue.service.js";
 import { WebhooksController } from "./webhooks/webhooks.controller.js";
 import { WebhooksService } from "./webhooks/webhooks.service.js";
 import { OrgAccountsController } from "./accounts/org-accounts.controller.js";
+import { OverviewController } from "./overview/overview.controller.js";
+import { OverviewService } from "./overview/overview.service.js";
 
 @Module({
   controllers: [
@@ -75,6 +77,7 @@ import { OrgAccountsController } from "./accounts/org-accounts.controller.js";
     ReviewController,
     ProviderReconciliationController,
     OrgAccountsController,
+    OverviewController,
   ],
   providers: [
     Dependencies,
@@ -112,6 +115,7 @@ import { OrgAccountsController } from "./accounts/org-accounts.controller.js";
     ReconciliationService,
     ReviewService,
     ProviderReconciliationService,
+    OverviewService,
   ],
 })
 export class AppModule {}
