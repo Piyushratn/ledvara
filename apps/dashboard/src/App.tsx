@@ -4,6 +4,7 @@ import { useAuth } from "./auth/AuthContext";
 import { AppPage } from "./pages/AppPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
+import { OnboardingPage } from "./pages/OnboardingPage";
 import { SignUpPage } from "./pages/SignUpPage";
 import { StatusPage } from "./pages/StatusPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
@@ -59,6 +60,7 @@ export function App() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route element={<RequireAuth />}>
             <Route path="/app" element={<AppPage />} />
+            <Route path="/orgs/:orgId/onboarding" element={<OnboardingPage />} />
           </Route>
           <Route path="*" element={<p>Page not found.</p>} />
         </Routes>

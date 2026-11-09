@@ -55,6 +55,7 @@ describe("App", () => {
   });
 
   it("shows the account page to a restored session", async () => {
+    vi.stubGlobal("fetch", () => Promise.resolve(new Response('{"data":[]}', { status: 200 })));
     renderAt("/app", fakeAuthApi({ restore: () => Promise.resolve(TEST_USER) }));
     expect(await screen.findByText(TEST_USER.email)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
