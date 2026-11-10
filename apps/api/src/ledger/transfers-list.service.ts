@@ -12,9 +12,21 @@ export const listTransfersSchema = z.object({
   to: z.string().datetime({ offset: true }).optional(),
   minAmount: z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER).optional(),
   maxAmount: z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER).optional(),
+  search: z.string().trim().min(1).max(100).optional(),
 });
 
 export type ListTransfersInput = z.infer<typeof listTransfersSchema>;
+
+export interface TransferListItem {
+  id: string;
+  status: string;
+  fromAccountId: string;
+  toAccountId: string;
+  amountMinor: string;
+  currency: string;
+  reference: string | null;
+  createdAt: string;
+}
 
 interface Row {
   id: string;
@@ -28,11 +40,21 @@ interface Row {
   currency: string;
 }
 
+/** Makes %, _ and \ match themselves inside a LIKE pattern. */
+export function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/gu, (char) => `\\${char}`);
+}
+
+const EXPORT_PAGE = 500;
+
 @Injectable()
 export class TransfersListService {
   constructor(@Inject(Dependencies) private readonly deps: Dependencies) {}
 
-  async list(orgId: string, input: ListTransfersInput) {
+  async list(
+    orgId: string,
+    input: ListTransfersInput,
+  ): Promise<{ data: TransferListItem[]; nextCursor: string | null }> {
     const params: unknown[] = [orgId];
     const where: string[] = ["t.org_id = $1", "t.kind = 'transfer'"];
     const add = (sql: string, value: unknown): void => {
@@ -45,6 +67,7 @@ export class TransfersListService {
     if (input.to) add("t.created_at <= ?::timestamptz", input.to);
     if (input.minAmount) add("d.amount_minor >= ?::bigint", String(input.minAmount));
     if (input.maxAmount) add("d.amount_minor <= ?::bigint", String(input.maxAmount));
+    if (input.search) add("t.reference ILIKE ? ESCAPE '\\'", `%${escapeLike(input.search)}%`);
     if (input.accountId) {
       params.push(input.accountId);
       where.push(
@@ -97,5 +120,27 @@ export class TransfersListService {
       })),
       nextCursor,
     };
+  }
+
+  /** Every match up to `cap` rows, newest first. The caller's cursor and limit are ignored. */
+  async listAll(
+    orgId: string,
+    input: ListTransfersInput,
+    cap: number,
+  ): Promise<{ rows: TransferListItem[]; truncated: boolean }> {
+    const rows: TransferListItem[] = [];
+    let cursor: string | undefined;
+    let hasMore = false;
+
+    while (rows.length < cap) {
+      const page = await this.list(orgId, { ...input, limit: EXPORT_PAGE, cursor });
+      rows.push(...page.data);
+      hasMore = page.nextCursor !== null;
+      if (!page.nextCursor) break;
+      cursor = page.nextCursor;
+    }
+
+    // Truncated when we collected more than the cap, or stopped at the cap with pages left.
+    return { rows: rows.slice(0, cap), truncated: rows.length > cap || hasMore };
   }
 }

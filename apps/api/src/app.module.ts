@@ -55,6 +55,7 @@ import { WebhooksService } from "./webhooks/webhooks.service.js";
 import { OrgAccountsController } from "./accounts/org-accounts.controller.js";
 import { OverviewController } from "./overview/overview.controller.js";
 import { OverviewService } from "./overview/overview.service.js";
+import { OrgTransfersController } from "./ledger/org-transfers.controller.js";
 
 @Module({
   controllers: [
@@ -78,6 +79,7 @@ import { OverviewService } from "./overview/overview.service.js";
     ProviderReconciliationController,
     OrgAccountsController,
     OverviewController,
+    OrgTransfersController,
   ],
   providers: [
     Dependencies,
