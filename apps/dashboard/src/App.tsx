@@ -11,6 +11,7 @@ import { OverviewPage } from "./pages/OverviewPage";
 import { SignUpPage } from "./pages/SignUpPage";
 import { StatusPage } from "./pages/StatusPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
+import { TransactionsPage } from "./pages/TransactionsPage";
 
 export function App() {
   const { status, logout } = useAuth();
@@ -67,6 +68,7 @@ export function App() {
             <Route path="/orgs/:orgId" element={<OrgLayout />}>
               <Route index element={<OverviewPage />} />
               <Route path="onboarding" element={<OnboardingPage />} />
+              <Route path="transactions" element={<TransactionsPage />} />
             </Route>
           </Route>
           <Route path="*" element={<p>Page not found.</p>} />

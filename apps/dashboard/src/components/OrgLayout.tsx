@@ -41,6 +41,9 @@ export function OrgLayout({ api = orgApi }: { api?: OrgApi }) {
           <NavLink end to={`/orgs/${orgId}`} className={linkClass}>
             Overview
           </NavLink>
+          <NavLink to={`/orgs/${orgId}/transactions`} className={linkClass}>
+            Transactions
+          </NavLink>
           <NavLink to={`/orgs/${orgId}/onboarding`} className={linkClass}>
             Onboarding
           </NavLink>
