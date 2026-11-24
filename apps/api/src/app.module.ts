@@ -56,6 +56,8 @@ import { OrgAccountsController } from "./accounts/org-accounts.controller.js";
 import { OverviewController } from "./overview/overview.controller.js";
 import { OverviewService } from "./overview/overview.service.js";
 import { OrgTransfersController } from "./ledger/org-transfers.controller.js";
+import { OrgTransferDetailController } from "./ledger/org-transfer-detail.controller.js";
+import { TransferDetailService } from "./ledger/transfer-detail.service.js";
 
 @Module({
   controllers: [
@@ -80,6 +82,7 @@ import { OrgTransfersController } from "./ledger/org-transfers.controller.js";
     OrgAccountsController,
     OverviewController,
     OrgTransfersController,
+    OrgTransferDetailController,
   ],
   providers: [
     Dependencies,
@@ -118,6 +121,7 @@ import { OrgTransfersController } from "./ledger/org-transfers.controller.js";
     ReviewService,
     ProviderReconciliationService,
     OverviewService,
+    TransferDetailService,
   ],
 })
 export class AppModule {}
