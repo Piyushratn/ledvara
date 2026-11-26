@@ -12,6 +12,7 @@ import { SignUpPage } from "./pages/SignUpPage";
 import { StatusPage } from "./pages/StatusPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { TransactionsPage } from "./pages/TransactionsPage";
+import { TransferDetailPage } from "./pages/TransferDetailPage";
 
 export function App() {
   const { status, logout } = useAuth();
@@ -69,6 +70,7 @@ export function App() {
               <Route index element={<OverviewPage />} />
               <Route path="onboarding" element={<OnboardingPage />} />
               <Route path="transactions" element={<TransactionsPage />} />
+              <Route path="transactions/:transferId" element={<TransferDetailPage />} />
             </Route>
           </Route>
           <Route path="*" element={<p>Page not found.</p>} />

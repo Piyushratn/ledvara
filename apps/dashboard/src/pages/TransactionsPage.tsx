@@ -6,7 +6,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { TransferFilters } from "../components/TransferFilters";
 import { FormAlert } from "../components/Field";
 import { saveBlob } from "../lib/csv-download";
@@ -95,7 +95,12 @@ export function TransactionsPage({ api = transfersApi }: { api?: TransfersApi })
       column.accessor("amountMinor", {
         header: () => <span className="block text-right">Amount</span>,
         cell: (info) => (
-          <span className="block text-right tabular-nums">{formatInr(info.getValue())}</span>
+          <Link
+            className="block text-right tabular-nums text-accent hover:underline"
+            to={`/orgs/${orgId}/transactions/${info.row.original.id}`}
+          >
+            {formatInr(info.getValue())}
+          </Link>
         ),
       }),
       column.accessor("reference", { header: "Reference", cell: (info) => info.getValue() ?? "—" }),
